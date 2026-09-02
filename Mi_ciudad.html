@@ -1,0 +1,2383 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SuperGanga Tycoon — Mi Ciudad</title>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow+Semi+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{--bg:#0f2f22;--paper:#fdf7ea;--paper2:#f2e7cd;--ink:#26221c;--red:#d93a2b;--red2:#a92417;
+--yellow:#ffcf3f;--green:#3ecf6f;--line:#e2d4b2;--shadow:#1e1a17}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Barlow Semi Condensed',sans-serif;color:var(--ink);background:
+ radial-gradient(1200px 500px at 50% -10%,#1b4a35 0%,transparent 60%),
+ repeating-linear-gradient(45deg,rgba(255,255,255,.015) 0 2px,transparent 2px 26px),var(--bg);
+ min-height:100vh;overflow-x:hidden}
+.num{font-variant-numeric:tabular-nums}button{font-family:inherit;cursor:pointer;user-select:none}
+#scene{position:fixed;inset:0;pointer-events:none;z-index:5;background:radial-gradient(ellipse at 50% 0%,transparent 40%,rgba(2,10,20,.9));opacity:0;transition:opacity 2s}
+#topbar{position:sticky;top:0;z-index:60;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;
+ padding:8px 12px;background:linear-gradient(#0c281c,#0a2217);border-bottom:3px solid #1d5a41}
+.chip{background:#12382a;border:2px solid #1d5a41;color:#e9f5ec;border-radius:10px;padding:5px 11px;font-size:.92rem;
+ display:flex;align-items:center;gap:6px;box-shadow:0 3px 0 rgba(0,0,0,.3)}
+.chip b{color:#fff}
+.mini{width:64px;height:9px;background:rgba(0,0,0,.45);border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,.25)}
+.mini i{display:block;height:100%;transition:width .4s}
+#tbEnergy i{background:linear-gradient(90deg,#ffb347,var(--yellow))}
+.btn{border:2px solid var(--shadow);border-radius:8px;padding:6px 12px;font-weight:700;font-size:.88rem;
+ box-shadow:0 3px 0 var(--shadow);transition:transform .1s;background:var(--yellow)}
+.btn:hover{transform:translateY(-2px)}.btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--shadow)}
+.btn.red{background:var(--red);color:#fff}.btn.ghost{background:#fff}.btn.grn{background:var(--green);color:#fff}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+#view-map{max-width:1280px;margin:8px auto;padding:0 12px}
+.mapwrap{position:relative;height:900px;border:4px solid var(--shadow);border-radius:16px;overflow:hidden}
+#leafletMap{position:absolute;inset:0;background:#dce8d8}
+.leaflet-container{font-family:'Barlow Semi Condensed',sans-serif;background:#dce8d8}
+#sun{position:absolute;top:26px;right:80px;font-size:46px;transition:filter 2s;filter:drop-shadow(0 0 18px #ffd75e);pointer-events:none;z-index:410}
+.night #leafletMap{filter:brightness(.55) saturate(.7) hue-rotate(-8deg)}
+.plaza{position:absolute;border-radius:50%;background:radial-gradient(#cfc4a6,#b3a683 70%);box-shadow:inset 0 0 0 6px #9a8f6f;cursor:pointer}
+.mapPin{cursor:pointer;text-align:center;white-space:nowrap;transform:translate(-50%,-100%);position:relative}
+.mapPin .pinShape{width:32px;height:32px;margin:0 auto;background:#e6503f;border:2.5px solid #fff;
+ border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 3px 7px rgba(0,0,0,.4);
+ display:flex;align-items:center;justify-content:center;transition:transform .15s}
+.mapPin .pinShape .pinGlyph{transform:rotate(45deg);font-size:15px;line-height:1;display:block}
+.mapPin:hover .pinShape,.mapPin.hover .pinShape{transform:rotate(-45deg) scale(1.12)}
+.mapPin.ownedPin .pinShape{background:#2ecc71}
+.mapPin.availablePin .pinShape{background:#f4b400}
+.mapPin.housePin .pinShape{background:#4285f4}
+.mapPin.plazaPin .pinShape,.mapPin.superPin .pinShape{background:#8e5ce8}
+.mapPin .lbl{position:absolute;left:50%;bottom:calc(100% + 4px);transform:translateX(-50%) translateY(4px);
+ display:inline-block;background:rgba(255,255,255,.97);border:2px solid var(--shadow);border-radius:10px;
+ padding:4px 10px 5px;font-size:13px;font-weight:700;line-height:1.15;box-shadow:0 3px 8px rgba(0,0,0,.28);
+ opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;z-index:5}
+.mapPin:hover .lbl,.mapPin.hover .lbl{opacity:1;transform:translateX(-50%) translateY(0);outline:3px solid rgba(255,210,60,.95)}
+.mapPin .lbl .st{font-size:11px;color:#6b6250;display:block;font-weight:600}
+.mapPin.ownedPin .lbl{background:#eaffef;border-color:var(--green);box-shadow:0 0 0 3px rgba(62,207,111,.22),0 5px 12px rgba(0,0,0,.3)}
+.mapPin.availablePin .lbl{background:#fffdf4;border-color:#e6b31e}
+.mapPin .laborIcon{display:inline-block;margin-right:3px;animation:laborFloat 1.35s ease-in-out infinite;transform-origin:center bottom}
+.mapPin.availablePin .laborIcon{filter:drop-shadow(0 0 5px rgba(255,190,30,.8))}
+.mapPin.availablePin .st::before{content:'Disponible · ';color:#b27600;font-weight:700}
+@keyframes laborFloat{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-5px) rotate(3deg)}}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#999;margin-right:3px}
+.dot.on{background:#2ecc71;box-shadow:0 0 6px #2ecc71;animation:pulse 1.4s infinite}
+@keyframes pulse{50%{opacity:.4}}
+.neon{animation:neon 1.1s steps(2) infinite;color:#ff5ad0;text-shadow:0 0 8px #ff5ad0}
+@keyframes neon{50%{opacity:.45}}
+#ticker{max-width:1240px;margin:8px auto 0;background:#fff8e0;border:2px dashed var(--yellow);border-radius:10px;
+ padding:7px 14px;font-weight:600;font-size:.92rem;transition:opacity .4s}
+.maphint{text-align:center;color:#cfe4d2;font-size:.85rem;margin-top:6px}
+#view-super{display:none}
+.awning{height:26px;background:repeating-linear-gradient(90deg,var(--red) 0 24px,#fff6e8 24px 48px)}
+.scallop{height:12px;background:
+ radial-gradient(circle at 12px -1px,var(--red) 12px,transparent 13px) 0 0/48px 12px repeat-x,
+ radial-gradient(circle at 12px -1px,#fff6e8 12px,transparent 13px) 24px 0/48px 12px repeat-x}
+.signrow{display:flex;justify-content:center;align-items:center;gap:14px;padding:14px 12px 4px;flex-wrap:wrap}
+.sign{position:relative;background:var(--red);border:3px solid var(--red2);border-radius:10px;padding:14px 40px 10px;
+ box-shadow:0 8px 0 var(--red2),0 14px 28px rgba(0,0,0,.45);transform:rotate(-.6deg);text-align:center}
+.sign h1{font-family:'Bungee';color:var(--yellow);font-size:clamp(1.3rem,3.5vw,2.3rem);cursor:pointer;
+ text-shadow:2px 2px 0 var(--red2),4px 4px 0 rgba(0,0,0,.35)}
+.bulbs{position:absolute;left:10px;right:10px;top:4px;height:7px;
+ background:radial-gradient(circle,#ffe9a3 2.4px,rgba(0,0,0,.25) 3.2px) 0 0/16px 7px repeat-x;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{filter:brightness(.55)}}
+.hud{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;padding:10px 12px 4px;max-width:1280px;margin:0 auto}
+.tag-cash{position:relative;background:var(--yellow);border:2px solid var(--shadow);clip-path:polygon(12px 0,100% 0,100% 100%,12px 100%,0 50%);
+ padding:6px 16px 6px 22px;display:flex;flex-direction:column;line-height:1.05;box-shadow:0 4px 0 var(--shadow)}
+.tag-cash .lbl2{font-size:.58rem;font-weight:700;letter-spacing:.2em;color:#7a5a00}
+.tag-cash .num{font-family:'Bungee';font-size:1.2rem;color:var(--shadow)}
+.xpbar,.capbar{width:70px;height:9px;background:rgba(0,0,0,.2);border-radius:6px;overflow:hidden;border:1px solid rgba(0,0,0,.25)}
+.xpbar i{display:block;height:100%;background:var(--red);width:0}
+.capbar i{display:block;height:100%;background:var(--green);width:0}
+.stars{color:#e6a900;letter-spacing:1px}
+nav.tabs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:10px}
+.tabbtn{font-family:'Bungee';font-size:.82rem;background:var(--paper);border:2px solid var(--shadow);border-radius:9px;
+ padding:8px 14px;box-shadow:0 4px 0 var(--shadow)}
+.tabbtn.active{background:var(--red);color:#fff}
+main.sgrid2{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:14px;max-width:1280px;margin:0 auto;padding:0 12px 60px}
+.tab{display:none}.tab.active{display:block;animation:fadein .3s}
+@keyframes fadein{from{opacity:0;transform:translateY(6px)}}
+aside.side{display:flex;flex-direction:column;gap:12px}
+@media(max-width:980px){main.sgrid2{grid-template-columns:1fr}.mapwrap{height:620px}}
+.panelhead{background:var(--paper);border:2px solid var(--shadow);border-radius:12px 12px 0 0;padding:12px 16px 8px}
+.panelhead h2{font-family:'Bungee';font-size:1.15rem;color:var(--red)}
+.panelhead p{font-size:.88rem;color:#6b6250}
+.panelbody{background:var(--paper);border:2px solid var(--shadow);border-top:1px dashed var(--line);border-radius:0 0 12px 12px;padding:10px 12px 14px}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center}
+#searchM{flex:1;min-width:160px;border:2px solid var(--shadow);border-radius:8px;padding:7px 10px;font:inherit;background:#fff}
+.qchip,.stratbtn,.cchip{border:2px solid var(--shadow);background:#fff;border-radius:8px;padding:5px 10px;font-weight:700;font-size:.83rem;box-shadow:0 3px 0 var(--shadow)}
+.qchip.sel{background:var(--yellow)}.stratbtn.sel{background:var(--green);color:#fff}.cchip.sel{background:var(--red);color:#fff}
+.cchiprow{display:flex;gap:5px;flex-wrap:wrap;margin:8px 0 2px}
+.eventbanner{margin-top:8px;background:#fff3cd;border:2px dashed #e6b31e;border-radius:8px;padding:7px 10px;font-weight:600;display:none;font-size:.9rem}
+.cathead{font-family:'Bungee';font-size:.9rem;color:#fff;background:#1d5a41;border-radius:8px;padding:5px 10px;margin:12px 0 7px}
+.mrow,.srow{display:grid;align-items:center;gap:9px;background:#fff;border:2px solid var(--line);border-radius:10px;padding:7px 10px;margin-bottom:6px;transition:transform .12s}
+.mrow:hover,.srow:hover{transform:translateY(-2px);border-color:#e6b31e}
+.mrow{grid-template-columns:38px minmax(110px,1.4fr) 115px 80px auto}
+.srow{grid-template-columns:38px minmax(120px,1.4fr) 84px 104px 148px auto}
+@media(max-width:700px){.mrow,.srow{grid-template-columns:34px 1fr auto;grid-auto-rows:auto}}
+.big-emoji{font-size:1.6rem;text-align:center}
+.pname{font-weight:700;line-height:1.1}.pmeta{font-size:.76rem;color:#8a7f68}
+.pricebox{text-align:right;line-height:1.1}.pricebox .now{font-weight:700}
+.trend.up{color:var(--red)}.trend.dn{color:#1e9e50}.trend.eq{color:#999}
+.badge{display:inline-block;background:var(--paper2);border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-size:.8rem;font-weight:700}
+.badge.zero{opacity:.45}
+.btn.mini2{padding:3px 8px;font-size:.95rem;background:#fff}
+.pctrl{display:flex;align-items:center;gap:5px;justify-content:center;flex-wrap:wrap}
+.pctrl .pprice{font-weight:700;min-width:66px;text-align:center}
+.pctrl .pmarg{font-size:.7rem;display:block;text-align:center}
+.dem{height:8px;background:#eee4cd;border-radius:5px;overflow:hidden;width:64px;display:inline-block;vertical-align:middle;border:1px solid var(--line)}
+.dem i{display:block;height:100%;background:linear-gradient(90deg,#ffb347,var(--red))}
+.srow .gain{text-align:right;font-size:.83rem}.srow .gain b{color:#1e9e50}
+.emptybox{padding:28px;text-align:center;color:#8a7f68;background:#fff;border:2px dashed var(--line);border-radius:12px}
+#uplist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.ucard{background:var(--paper);border:2px solid var(--shadow);border-radius:12px;padding:14px;box-shadow:0 5px 0 rgba(0,0,0,.25)}
+.ucard .uhead{display:flex;gap:8px;align-items:center;margin-bottom:5px}
+.ucard .uemoji{font-size:1.8rem}.ucard h3{font-family:'Bungee';font-size:.95rem;color:var(--red)}
+.ucard p{font-size:.87rem;color:#5c5443;min-height:36px}
+.pips{display:flex;gap:3px;margin:8px 0}
+.pip{width:15px;height:9px;border-radius:3px;background:#e4d9bd;border:1px solid var(--shadow)}
+.pip.on{background:var(--green)}
+.ucard .btn{width:100%}.maxed{color:var(--green);font-weight:700;text-align:center;padding:7px}
+#statsbox .sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px;margin-bottom:14px}
+.stat{background:#fff;border:2px solid var(--line);border-radius:10px;padding:10px;text-align:center}
+.stat .v{font-family:'Bungee';font-size:1.2rem;color:var(--red)}
+.stat .k{font-size:.75rem;color:#8a7f68;text-transform:uppercase;letter-spacing:.05em}
+.toprow{display:flex;justify-content:space-between;background:#fff;border:2px solid var(--line);border-radius:8px;padding:7px 10px;margin-bottom:5px;font-weight:600;font-size:.9rem}
+.receipt{position:relative;background:#fff;border:2px solid var(--shadow);border-bottom:none;border-radius:12px 12px 0 0;padding:10px 12px}
+.receipt::after{content:'';position:absolute;left:-2px;right:-2px;bottom:-11px;height:12px;
+ background:linear-gradient(-45deg,transparent 8px,#fff 0) 0 0/16px 16px repeat-x,linear-gradient(45deg,transparent 8px,#fff 0) 8px 0/16px 16px repeat-x}
+.receipt h3{font-family:'Bungee';font-size:.92rem;color:var(--red)}
+#feed{max-height:300px;overflow-y:auto;font-size:.84rem}
+#feed div{padding:4px 2px;border-bottom:1px dashed #e6dcc2;animation:slidein .3s}
+@keyframes slidein{from{opacity:0;transform:translateX(-8px)}}
+#feed .t{color:#b3a685;font-size:.7rem;margin-right:5px}
+#feed .bad{color:var(--red)}#feed .good{color:#1e9e50;font-weight:600}
+.tipbox{background:#fff3cd;border:2px solid #e6b31e;border-radius:12px;padding:10px 12px;font-size:.88rem;line-height:1.35}
+.modal{position:fixed;inset:0;z-index:10000!important;background:rgba(4,16,10,.78);display:none;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(2px)}
+.modal.open{display:flex}
+.mcard{position:relative;z-index:10001;background:var(--paper);border:3px solid var(--shadow);border-radius:14px;max-width:520px;width:100%;padding:22px;
+ box-shadow:0 10px 0 var(--shadow),0 24px 50px rgba(0,0,0,.5);animation:pop .3s;max-height:92vh;overflow-y:auto}
+.mcard.wide{max-width:820px}
+.mcard h2{font-family:'Bungee';color:var(--red);font-size:1.35rem;margin-bottom:8px}
+.mcard p{margin-bottom:8px;line-height:1.35}
+.mcard input,.mcard select{width:100%;border:2px solid var(--shadow);border-radius:8px;padding:8px;font:inherit;margin:4px 0 10px;background:#fff}
+.sumrow{display:flex;justify-content:space-between;padding:5px 4px;border-bottom:1px dashed var(--line);font-weight:600;font-size:.94rem}
+.sumrow.total{border-bottom:none;border-top:2px solid var(--shadow);margin-top:4px;font-family:'Bungee'}
+.sumrow .pos{color:#1e9e50}.sumrow .neg{color:var(--red)}
+.steps{background:#fff;border:2px dashed var(--line);border-radius:10px;padding:10px 12px;font-size:.9rem;margin:8px 0}
+.steps li{margin:4px 0 4px 18px}
+.modebtn{display:flex;flex-direction:column;gap:4px;align-items:center;flex:1;padding:14px 8px;font-size:1rem}
+.modebtn small{font-weight:400;font-size:.75rem;opacity:.8}
+@keyframes pop{from{transform:scale(.7);opacity:0}}
+.sect{background:#fff;border:2px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+.sect h4{font-family:'Bungee';font-size:.9rem;color:var(--red);margin-bottom:6px}
+.orow{display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:1px dashed var(--line);padding:6px 0;font-size:.9rem;flex-wrap:wrap}
+.orow:last-child{border:none}
+#chatbox{max-height:180px;overflow-y:auto;font-size:.88rem;margin-bottom:8px}
+#chatbox div{padding:3px 0;border-bottom:1px dotted #eee}
+.rowflex{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fx{position:fixed;z-index:130;font-family:'Bungee';font-size:.95rem;pointer-events:none;animation:floatup 1.1s forwards}
+@keyframes floatup{to{transform:translateY(-46px);opacity:0}}
+.fx.plus{color:var(--green)}.fx.minus{color:#ff8a7a}
+#toasts{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:150;display:flex;flex-direction:column;gap:8px;align-items:center}
+.start-budget{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--yellow);border:2px solid var(--shadow);border-radius:10px;padding:9px 12px;margin:10px 0;font-weight:700}
+.valencia-message{background:#fff3cd;border:2px dashed #e6b31e;border-radius:9px;padding:9px 11px;margin:0 0 10px;font-size:.9rem;line-height:1.3;color:#5c4821;font-weight:600}.family-group{margin:8px 0 10px}.family-title{font-family:'Bungee';font-size:.84rem;color:var(--red);border-bottom:2px solid var(--yellow);padding:4px 2px;margin-bottom:6px}.family-items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.family-block{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;background:#fff;border:2px solid var(--line);border-radius:10px;padding:10px 12px;text-align:left;cursor:pointer;box-shadow:0 3px 0 rgba(0,0,0,.14);transition:.12s;box-sizing:border-box}.family-block:hover{transform:translateY(-1px);border-color:#e6b31e;background:#fffdf3}.family-block strong{font-family:'Bungee';font-size:.78rem;color:var(--red);line-height:1.15}.family-block small{display:block;color:#6b6250;font-size:.72rem;margin-top:3px}.family-arrow{font-size:1.3rem;color:#c69200;flex:0 0 auto}.nested-modal{z-index:12000!important}.nested-modal .mcard{z-index:12001;width:min(760px,94vw)}.store-subtitle{display:block;color:#fff4c2;font-size:.68rem;font-weight:700;letter-spacing:.03em;margin-top:3px}.menu-float{position:absolute;top:14px;left:14px;z-index:7000}.hamburger{width:48px;height:44px;border:2px solid #d7a914;border-radius:10px;background:#fff8df;color:#173c2d;font-size:1.45rem;box-shadow:0 3px 0 rgba(0,0,0,.24)}.quick-menu{display:none;position:absolute;top:52px;left:0;width:205px;background:#fff8df;border:2px solid #d7a914;border-radius:12px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.35)}.quick-menu.open{display:flex;flex-direction:column;gap:6px}.quick-menu .btn{width:100%;text-align:left;white-space:nowrap}.inventory-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.inventory-card{background:#fff;border:2px solid var(--line);border-radius:9px;padding:8px;min-width:0}.inventory-card h3{font-family:'Bungee';color:var(--red);font-size:.85rem;margin-bottom:5px}.inventory-row{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dotted #d8cdb7;padding:4px 0;font-size:.82rem}.inventory-row:last-child{border:0}.economy-log{max-height:420px;overflow-y:auto}.economy-item{display:grid;grid-template-columns:70px 1fr auto;gap:8px;align-items:center;padding:7px 4px;border-bottom:1px dotted #d8cdb7;font-size:.82rem}.economy-item .kind{color:#8a7f68;font-size:.72rem}.economy-item .amount{font-weight:700;text-align:right}.empty-log{text-align:center;background:#fff3cd;border:2px dashed #e6b31e;border-radius:9px;padding:16px;color:#6b6250}.inventory-actions{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0}.inventory-actions .btn{flex:1 1 150px}@media(max-width:600px){.inventory-grid{grid-template-columns:1fr}.economy-item{grid-template-columns:58px 1fr}.economy-item .amount{grid-column:2;text-align:left}}.menu-float{position:absolute;top:14px;left:14px;z-index:7000}.hamburger{width:48px;height:44px;border:2px solid #d7a914;border-radius:10px;background:#fff8df;color:#173c2d;font-size:1.45rem;box-shadow:0 3px 0 rgba(0,0,0,.24)}.quick-menu{display:none;position:absolute;top:52px;left:0;width:190px;background:#fff8df;border:2px solid #d7a914;border-radius:12px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.35)}.quick-menu.open{display:flex;flex-direction:column;gap:6px}.quick-menu .btn{width:100%;text-align:left;white-space:nowrap}.inventory-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.inventory-card{background:#fff;border:2px solid var(--line);border-radius:9px;padding:8px;min-width:0}.inventory-card h3{font-family:'Bungee';color:var(--red);font-size:.85rem;margin-bottom:5px}.inventory-row{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dotted #d8cdb7;padding:4px 0;font-size:.82rem}.inventory-row:last-child{border:0}.economy-log{max-height:420px;overflow-y:auto}.economy-item{display:grid;grid-template-columns:70px 1fr auto;gap:8px;align-items:center;padding:7px 4px;border-bottom:1px dotted #d8cdb7;font-size:.82rem}.economy-item .kind{color:#8a7f68;font-size:.72rem}.economy-item .amount{font-weight:700;text-align:right}.empty-log{text-align:center;background:#fff3cd;border:2px dashed #e6b31e;border-radius:9px;padding:16px;color:#6b6250}@media(max-width:600px){.inventory-grid{grid-template-columns:1fr}.economy-item{grid-template-columns:58px 1fr}.economy-item .amount{grid-column:2;text-align:left}}.origin-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:8px 0 10px}.origin-card{background:#fff;border:2px solid var(--line);border-radius:10px;padding:8px;text-align:left;cursor:pointer;box-shadow:0 3px 0 rgba(0,0,0,.15);transition:.12s;min-width:0;width:100%;box-sizing:border-box;overflow:hidden}.origin-card:hover{transform:translateY(-2px);border-color:#e6b31e}.origin-card.sel{background:#eaffef;border-color:var(--green);box-shadow:0 4px 0 #219653}.origin-card h3{font-family:'Bungee';font-size:.78rem;color:var(--red);margin-bottom:4px;line-height:1.12;overflow-wrap:anywhere;word-break:normal}.origin-card p{font-size:.72rem;line-height:1.2;color:#5c5443;margin:3px 0;overflow-wrap:anywhere;word-break:normal}.origin-card .origin-challenge{color:#6b6250;font-size:.7rem}.origin-card .origin-money{font-weight:700;color:#1e9e50;font-size:.82rem}.origin-detail{background:#fff3cd;border:2px dashed #e6b31e;border-radius:9px;padding:8px 10px;font-size:.82rem;line-height:1.3;margin-bottom:8px}.origin-badge{display:inline-block;background:#eaffef;border:1px solid var(--green);border-radius:6px;padding:2px 7px;font-size:.75rem;font-weight:700;color:#176d36;margin-left:5px}@media(max-width:700px){.origin-list{grid-template-columns:1fr}.family-items{grid-template-columns:1fr}}
+.land-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;padding:2px}
+.land-card{background:#f7f2e2;border:2px solid var(--line);border-radius:12px;padding:12px 10px;text-align:center;box-shadow:0 3px 0 rgba(0,0,0,.14);display:flex;flex-direction:column;min-width:0}
+.land-card h3{font-family:'Bungee';font-size:.78rem;color:var(--ink);line-height:1.25;min-height:2.4em;margin-bottom:4px}
+.land-card .land-meta{font-size:.72rem;color:#6b6250;margin:1px 0}
+.land-card .land-produce{font-size:.72rem;color:#5c5443;margin:5px 0;min-height:1.6em}
+.land-card .land-desc{font-size:.7rem;color:#8a7f68;line-height:1.25;margin-bottom:6px;min-height:2.4em}
+.land-card .land-price{font-family:'Bungee';font-size:.86rem;color:#1e9e50;margin:4px 0 8px}
+.land-card .land-owned{font-size:.68rem;font-weight:700;color:#176d36;background:#eaffef;border:1px solid var(--green);border-radius:6px;padding:2px 6px;margin-bottom:6px;display:inline-block}
+.land-card button{width:100%;background:#2e78e0;color:#fff;border-color:#173c2d;box-shadow:0 3px 0 #173c2d}
+.land-card button:disabled{background:#9fb6cf}
+.landcat-bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.landcat-bar .lc-btn{font-size:.72rem;font-weight:700;background:#fff;border:2px solid var(--line);border-radius:8px;padding:4px 9px}
+.landcat-bar .lc-btn.active{background:var(--red);color:#fff;border-color:var(--red2)}
+.start-budget strong{font-family:'Bungee';font-size:1.15rem}.start-count{font-size:.85rem;color:#6b6250;margin:-3px 0 8px}
+.start-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;max-height:310px;overflow-y:auto;padding:2px}
+.start-est{display:flex;align-items:center;gap:7px;text-align:left;background:#fff;border:2px solid var(--line);border-radius:9px;padding:7px;min-height:62px;min-width:0;width:100%;box-sizing:border-box;box-shadow:0 2px 0 rgba(0,0,0,.12);overflow:hidden}
+.start-est:hover{border-color:#e6b31e;transform:translateY(-1px)}.start-est.sel{background:#eaffef;border-color:var(--green);box-shadow:0 3px 0 #219653}
+.start-est:disabled{opacity:.48;cursor:not-allowed;transform:none}.start-est .eemoji{font-size:1.35rem;flex:0 0 auto}.start-est>span:nth-child(2){min-width:0;flex:1 1 auto;overflow:hidden}.start-est .ename{font-weight:700;line-height:1.12;font-size:.8rem;display:block;overflow-wrap:anywhere;word-break:normal}.start-est .emeta{display:block;color:#8a7f68;font-size:.68rem;margin-top:3px;line-height:1.15;overflow-wrap:anywhere;word-break:normal}.start-est .echeck{margin-left:auto;font-size:1rem;flex:0 0 auto}
+@media(max-width:560px){.start-list{grid-template-columns:1fr}.mcard.wide{padding:16px}}
+.toast{background:var(--shadow);color:#fff;padding:9px 18px;border-radius:10px;border:2px solid var(--yellow);font-weight:600;animation:pop .25s;max-width:92vw;text-align:center}
+.broker-layout{display:grid;grid-template-columns:210px 1fr;gap:14px}
+.broker-categories{background:var(--paper2);border-radius:10px;padding:8px;border:2px solid var(--line);max-height:500px;overflow-y:auto}
+.broker-categories .cat-item{padding:6px 10px;border-radius:6px;cursor:pointer;font-weight:600;font-size:.85rem;margin-bottom:2px;display:flex;align-items:center;gap:6px;transition:background .1s}
+.broker-categories .cat-item:hover{background:#e6dcc8}
+.broker-categories .cat-item.active{background:var(--yellow);color:var(--shadow)}
+.broker-categories .cat-item .badge-cat{font-size:.7rem;background:rgba(0,0,0,.1);border-radius:10px;padding:0 6px;margin-left:auto}
+.broker-table-wrap{overflow-x:auto;border:2px solid var(--line);border-radius:10px;background:#fff}
+.broker-table{width:100%;border-collapse:collapse;font-size:.82rem}
+.broker-table th{background:var(--paper2);text-align:left;padding:6px 10px;border-bottom:2px solid var(--line);font-family:'Bungee';font-weight:400;font-size:.78rem;color:var(--ink)}
+.broker-table td{padding:5px 10px;border-bottom:1px solid #eee;cursor:pointer;transition:background .1s}
+.broker-table tr:hover td{background:#f5efe4}
+.broker-table .col-emoji{width:30px;text-align:center}
+.broker-table .col-name{min-width:120px}
+.broker-table .col-cat{min-width:80px}
+.broker-table .col-buy{min-width:80px;text-align:right}
+.broker-table .col-sell{min-width:80px;text-align:right}
+.broker-table .col-change{min-width:70px;text-align:right}
+.broker-table .col-stock{min-width:60px;text-align:center}
+.broker-table .trend-up{color:var(--green)}
+.broker-table .trend-down{color:var(--red)}
+.broker-table .trend-eq{color:#999}
+.broker-table .btn-buy{font-size:.7rem;padding:2px 8px;background:var(--yellow);border:1px solid var(--shadow);border-radius:4px;cursor:pointer}
+.broker-table .btn-buy:hover{background:#f5c800}
+.broker-table .badge-stock{background:var(--paper2);border-radius:4px;padding:0 6px;font-size:.7rem}
+.broker-table .badge-stock.own{background:#c8e6c9}
+.broker-table .badge-stock.est{background:#d4e0f0}
+@media(max-width:700px){.broker-layout{grid-template-columns:1fr}.broker-categories{max-height:200px;display:flex;flex-wrap:wrap;gap:4px}.broker-categories .cat-item{flex:0 0 auto;margin-bottom:0}}
+.shake{animation:shk .35s}@keyframes shk{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.node-marker{background:rgba(255,255,255,0.85);border:2px solid #666;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.3);cursor:pointer;transition:.15s}
+.node-marker:hover{transform:scale(1.15);border-color:#222}
+.node-marker.free{background:#d3e3d3;border-color:#2e7d32}
+.node-marker.owned{background:#a5d6a7;border-color:#1b5e20}
+.node-marker.rented{background:#ffe082;border-color:#e65100}
+.node-marker.occupied{background:#90caf9;border-color:#0d47a1}
+.node-marker .node-type{font-size:10px;line-height:1}
+.comunidades-control{background:white;border:2px solid rgba(0,0,0,0.2);border-radius:4px;box-shadow:0 1px 5px rgba(0,0,0,0.65);cursor:pointer;margin-top:10px}
+.comunidades-control .btn-comunidades{width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:bold;background:white;border:none;cursor:pointer}
+.comunidades-menu{display:none;position:absolute;top:38px;left:0;background:white;border:1px solid #ccc;border-radius:4px;box-shadow:0 2px 10px rgba(0,0,0,0.2);min-width:180px;z-index:1000}
+.comunidades-menu.open{display:block}
+.comunidades-menu ul{list-style:none;margin:0;padding:0}
+.comunidades-menu li{padding:8px 12px;border-bottom:1px solid #eee;cursor:pointer}
+.comunidades-menu li:hover{background:#f0f0f0}
+.comunidades-menu li:last-child{border-bottom:none}
+</style>
+</head>
+<body>
+<div id="scene"></div>
+
+<div id="topbar" style="display:none">
+  <div class="chip">💼 Cartera <b class="num" id="tbWallet">€1.000.000</b></div>
+  <div class="chip">⚡ <div class="mini" id="tbEnergy"><i style="width:100%"></i></div></div>
+  <div class="chip"><span id="tbMood">😊</span> Ánimo</div>
+  <div class="chip">📅 Día <b id="tbDay">1</b></div>
+  <div class="chip">🕗 <b id="tbClock">--:--</b></div>
+  <div class="chip" id="tbMode">🤖 Offline</div>
+  <button class="btn ghost" id="btnPause">⏸️</button>
+  <button class="btn ghost" id="btnSpeed">⏩×1</button>
+  <button class="btn ghost" id="btnFriends">👥 Amigos</button>
+  <button class="btn ghost" id="btnSound">🔊</button>
+  <button class="btn ghost" id="btnSave">💾</button>
+  <button class="btn red" id="btnReset">🗑️</button>
+</div>
+
+<div id="view-map" style="display:none">
+  <div class="menu-float"><button class="hamburger" id="btnHamburger" aria-label="Abrir menú">☰</button><div class="quick-menu" id="quickMenu"><button class="btn" id="menuMarket">🚚 Mercado</button><button class="btn" id="menuInventory">🎒 Inventario</button><button class="btn" id="menuEconomy">📊 Economía</button></div></div>
+  <div class="mapwrap" id="mapwrap">
+    <div id="leafletMap"></div>
+    <div id="sun">☀️</div>
+  </div>
+  <div id="ticker">📻 El barrio está tranquilo…</div>
+  <p class="maphint">🖱️ Haz clic en cualquier edificio (el área de clic es amplia) · El reloj del barrio sigue tu hora real en ciclo de 24 h · La plaza ⛲ guarda chat, pedidos y ofertas · Los círculos 🟢 son nodos libres para construir</p>
+</div>
+
+<div id="view-super">
+  <div class="awning"></div><div class="scallop"></div>
+  <div class="signrow">
+    <button class="btn ghost" id="btnGoMap">🗺️ Volver al barrio</button>
+    <div class="sign"><div class="bulbs"></div><h1 id="storeName" title="Clic para renombrar">SUPERGANGA</h1><small class="store-subtitle">Artículos · establecimientos · locales económicos</small></div>
+  </div>
+  <div class="hud">
+    <div class="tag-cash"><span class="lbl2">CAJA DEL SÚPER</span><span class="num" id="cash">€0,00</span></div>
+    <div class="chip">⭐ <b id="rep">3,0</b> <span class="stars" id="stars">★★★☆☆</span></div>
+    <div class="chip">🏷️ Nivel <b id="level">1</b> <div class="xpbar"><i id="xpbar"></i></div></div>
+    <div class="chip">📦 <b id="stockT">0</b>/<span id="capT">250</span> <div class="capbar"><i id="capbar"></i></div></div>
+    <div class="chip">🧾 Hoy: <b id="todayCust">0</b> cli · <b id="todayRev">€0</b></div>
+  </div>
+  <nav class="tabs">
+    <button class="tabbtn active" data-t="mercado">🚚 Mercado</button>
+    <button class="tabbtn" data-t="estantes">🗄️ Estantes</button>
+    <button class="tabbtn" data-t="mejoras">🛠️ Mejoras</button>
+    <button class="tabbtn" data-t="stats">📊 Oficina</button>
+  </nav>
+  <main class="sgrid2">
+    <div>
+      <section class="tab active" id="tab-mercado">
+        <div class="panelhead"><h2>🚚 Mercado mayorista</h2><p id="catcount"></p>
+          <div class="controls"><input id="searchM" placeholder="🔍 Buscar producto…"><div id="qchips"></div></div>
+          <div class="cchiprow" id="catchips"></div>
+          <div class="eventbanner" id="eventBanner"></div>
+        </div>
+        <div class="panelbody"><div id="mklist"></div></div>
+      </section>
+      <section class="tab" id="tab-estantes">
+        <div class="panelhead"><h2>🗄️ Tus estantes</h2><p>Más barato = más ventas · más caro = más margen o clientes enfadados.</p>
+          <div class="controls">
+            <button class="stratbtn" data-m="0.9">🔻 Rebajas ×0,9</button>
+            <button class="stratbtn sel" data-m="1.15">✅ Estándar ×1,15</button>
+            <button class="stratbtn" data-m="1.5">💎 Premium ×1,5</button>
+            <button class="stratbtn" data-m="2">🤑 Especular ×2</button>
+          </div>
+        </div>
+        <div class="panelbody"><div id="shelflist"></div>
+          <div class="emptybox" id="shelfEmpty">Estantes vacíos. ¡Compra en el 🚚 Mercado!</div></div>
+      </section>
+      <section class="tab" id="tab-mejoras">
+        <div class="panelhead"><h2>🛠️ Mejoras del local</h2><p>Cajas y robot pagan sueldo diario.</p></div>
+        <div class="panelbody"><div id="uplist"></div></div>
+      </section>
+      <section class="tab" id="tab-stats">
+        <div class="panelhead"><h2>📊 Oficina</h2></div>
+        <div class="panelbody" id="statsbox"></div>
+      </section>
+    </div>
+    <aside class="side">
+      <div class="receipt"><h3>🧾 Cinta de tickets</h3><div id="feed"></div></div>
+      <div class="tipbox" id="tipbox">💡 Llena los estantes antes de las horas punta (12:00 y 19:00). De madrugada casi no entra nadie.</div>
+    </aside>
+  </main>
+</div>
+
+<div class="modal nested-modal" id="modal-panel"><div class="mcard wide" id="pcard"></div></div>
+<div class="modal" id="modal-broker"><div class="mcard wide" id="brokerCard"></div></div>
+<div class="modal" id="modal-day"><div class="mcard">
+  <h2>🌙 Cierre del día <span id="sumDay">1</span></h2>
+  <div id="sumRows"></div><p id="sumExtra" style="font-size:.88rem;color:#6b6250;margin-top:6px"></p>
+  <button class="btn" id="btnNextDay" style="width:100%;margin-top:8px">☀️ Continuar en el día <span id="nextDayN">2</span></button>
+</div></div>
+<div class="modal" id="modal-broke"><div class="mcard" style="text-align:center">
+  <h2>📉 ¡BANCARROTA!</h2><p>Las deudas han devorado tu supermercado.</p>
+  <button class="btn red" onclick="localStorage.removeItem('superTycoonV2');location.reload()">Empezar de cero</button>
+</div></div>
+
+<div class="modal open" id="modal-intro"><div class="mcard">
+  <h2 id="introTitle">Mi ciudad</h2>
+  <p id="valenciaMessage" class="valencia-message"></p>
+  <p id="introText">Tu partida comienza con un origen, un capital y unas reglas distintas. Administra tu cartera personal, la caja del supermercado y los establecimientos que compres para convertir una oportunidad en un negocio sostenible.</p>
+  <ol class="steps">
+    <li>🏪 <b>Artículos y productos</b>: compra mercancía, fija precios, repón los estantes y genera ventas con clientes reales del barrio.</li>
+    <li>💶 <b>Economía</b>: separa la cartera personal de la caja del súper, paga gastos, salarios, alquileres, impuestos y préstamos.</li>
+    <li>🏢 <b>Expansión</b>: compra hasta tres establecimientos de Valencia y gestiona bares, restaurantes, tiendas y servicios desde sus modales interactivos.</li>
+    <li>🤝 <b>Mercado broker</b>: negocia lotes y productos con la CPU en offline o con otros jugadores en online; la reputación y tus decisiones cambian el barrio.</li>
+    <li>🏗️ <b>Terrenos y edificios</b>: adquiere parcelas (nodos libres) en el mapa y construye sobre ellas los edificios que compres en el broker.</li>
+  </ol>
+  <label style="font-weight:700;font-size:.85rem">TU NOMBRE DE GERENTE</label>
+  <input id="introName" maxlength="16" value="Alex">
+  <label style="font-weight:700;font-size:.85rem">HISTORIAL INICIAL</label>
+  <div id="originList" class="origin-list"></div>
+  <div id="originDetail" class="origin-detail"></div>
+  <div class="start-budget"><span>💼 Presupuesto inicial</span><strong id="startBudget">€1.000.000,00</strong></div>
+  <p class="start-count">Elige hasta <b>3 establecimientos</b> para comenzar. Los edificios que compres aparecerán después en el mapa de Valencia.</p>
+  <div id="startEstablishments" class="start-list"></div>
+  <div class="sumrow total"><span>Total de compras</span><span id="startSpent">€0,00</span></div>
+  <label style="font-weight:700;font-size:.85rem;margin-top:10px;display:block">MODO DE JUEGO</label>
+  <div class="rowflex" style="margin:6px 0 10px">
+    <button class="btn grn modebtn" id="btnOffline">🤖 Offline vs CPU<small>Vecinos controlados por la IA</small></button>
+    <button class="btn modebtn" id="btnOnline">🌐 Online (Firebase)<small>Multijugador real en una sala</small></button>
+  </div>
+  <input id="introRoom" placeholder="Sala (ej: barrio-1)" value="barrio-1">
+  <p style="font-size:.78rem;color:#8a7f68" id="fbNote"></p>
+  <button class="btn ghost" id="btnFriendsIntro" style="width:100%;margin-top:6px">👥 Avisar a mis amigos para jugar</button>
+</div></div>
+
+<div class="modal nested-modal" id="modal-family-results"><div class="mcard wide"><div id="familyResults"></div></div></div>
+<div class="modal" id="modal-inventory"><div class="mcard wide"><div id="inventoryCard"></div></div></div>
+<div class="modal" id="modal-economy"><div class="mcard wide"><div id="economyCard"></div></div></div>
+<div class="modal" id="modal-friends"><div class="mcard">
+  <h2>👥 Amigos</h2>
+  <p style="font-size:.85rem;color:#6b6250">Guarda a tus amigos para avisarles por WhatsApp cuando quieras jugar online.</p>
+  <div class="sect"><h4>➕ Añadir amigo</h4>
+   <div class="rowflex">
+    <input id="friendName" placeholder="Nombre" style="flex:1;min-width:100px">
+    <input id="friendPhone" placeholder="Móvil (con prefijo, ej: +34600...)" style="flex:1;min-width:160px">
+   </div>
+   <button class="btn" id="btnAddFriend" style="width:100%;margin-top:6px">➕ Guardar amigo</button></div>
+  <div class="sect"><h4>📇 Mi lista de amigos</h4><div id="friendsList" class="emptybox">Aún no has añadido amigos.</div></div>
+  <div style="text-align:right;margin-top:8px"><button class="btn ghost" onclick="$('modal-friends').classList.remove('open')">Cerrar ✖</button></div>
+</div></div>
+<div class="modal" id="modal-waiting"><div class="mcard" style="text-align:center">
+  <h2>⌛ Esperando compañeros de barrio…</h2>
+  <p>Se necesitan al menos <b>2 jugadores</b> conectados para jugar online. Comparte el código de tu sala:</p>
+  <div class="chip" style="font-size:1.1rem;justify-content:center;margin:8px auto;width:fit-content">🌐 <b id="waitRoomCode">barrio-1</b></div>
+  <button class="btn ghost" id="btnCopyRoom" style="width:100%">📋 Copiar código de sala</button>
+  <div class="sect" style="text-align:left"><h4>🎲 Emparejar con alguien</h4>
+   <button class="btn grn" id="btnRandomPlayer2" style="width:100%">🎲 Buscar jugador aleatorio online</button></div>
+  <div class="sect" style="text-align:left"><h4>👥 Avisar a un amigo</h4><div id="friendsListWait" class="emptybox">Aún no has añadido amigos.</div></div>
+  <div class="rowflex" style="margin-top:6px">
+   <button class="btn ghost" id="btnBackMenuWait" style="flex:0 0 auto">◀ Menú inicial</button>
+   <button class="btn" id="btnCancelWait" style="flex:1">🤖 Cancelar y jugar contra la IA</button>
+  </div>
+</div></div>
+<div class="modal nested-modal" id="modal-noplayers"><div class="mcard" style="text-align:center">
+  <h2>😕 Nadie disponible</h2>
+  <p>No hemos encontrado a nadie conectado buscando partida ahora mismo.</p>
+  <p style="font-weight:700;margin-top:8px">¿Quieres jugar contra la IA?</p>
+  <div class="rowflex" style="margin-top:12px">
+   <button class="btn ghost" id="btnNoPlayersCancel" style="flex:1">⌛ Seguir esperando</button>
+   <button class="btn grn" id="btnNoPlayersYes" style="flex:1">🤖 Sí, jugar contra la IA</button>
+  </div>
+</div></div>
+<div id="toasts"></div>
+
+<script>
+'use strict';
+/* ============ HELPERS ============ */
+const $=id=>document.getElementById(id);
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+const ri=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const r2=n=>Math.round(n*100)/100;
+const fmt$=n=>'€'+n.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtI=n=>Math.round(n).toLocaleString('es-ES');
+const norm=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+const nowMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes();};
+
+/* ============ TRADUCCIONES DE TIPOS ============ */
+const TYPE_TRANSLATIONS = {
+  'Land': 'Terreno',
+  'Residential': 'Residencial',
+  'Farm': 'Granja',
+  'Factory': 'Fábrica',
+  'Commercial': 'Comercial',
+  'Amenity': 'Equipamiento',
+  'Service': 'Servicio',
+  'Utility': 'Utilidad',
+  'Transport': 'Transporte'
+};
+const translateType = (type) => TYPE_TRANSLATIONS[type] || type;
+
+/* ============ FIREBASE (claves reales) ============ */
+const FIREBASE_CONFIG={apiKey:"AIzaSyAonZFfeUCTELdFUhQrPADOPafFA0_Tzeg",authDomain:"juegobarrio-fbe55.firebaseapp.com",projectId:"juegobarrio-fbe55"};
+const FB_OK = typeof firebase!=='undefined' && !FIREBASE_CONFIG.apiKey.startsWith('TU_');
+$('fbNote').textContent = FB_OK ? '✅ Firebase detectado: podrás jugar online.' :
+ '⚠️ Firebase sin configurar (edita FIREBASE_CONFIG en el código). El modo online se jugará con vecinos CPU.';
+
+/* ================= CATÁLOGO ================= */
+const CATS=[['F','Frutería','🍎'],['V','Verdulería','🥕'],['L','Lácteos y huevos','🥛'],['C','Carnicería','🥩'],
+['X','Pescadería','🐟'],['P','Panadería','🥖'],['B','Bebidas','🥤'],['S','Snacks','🥨'],['D','Dulces','🍫'],
+['N','Despensa','🥫'],['M','Desayuno','☕'],['Z','Congelados','🧊'],['H','Limpieza','🧴'],
+['A','Cuidado personal','🪥'],['T','Mascotas','🐶'],['Y','Bebés','🍼'],['G','Gourmet','🍾']];
+const CATNAME=Object.fromEntries(CATS.map(c=>[c[0],c[1]])),CATEMO=Object.fromEntries(CATS.map(c=>[c[0],c[2]]));
+const RAW={
+F:[['🍎','Manzana',.6],['🍌','Plátano de Canarias',.5],['🍊','Naranja',.5],['🍐','Pera',.7],['🍇','Uvas',1.4],['🍓','Fresas',1.8],['🍉','Sandía',2.2],['🍈','Melón',1.9],['🍍','Piña',1.7],['🥭','Mango',1.5],['🥑','Aguacate',1.9],['🍋','Limón',.6],['🍑','Melocotón',1.1],['🥝','Kiwi',1.2],['🍒','Cerezas',2.6],['🫐','Arándanos',2.8],['🥥','Coco',1.6]],
+V:[['🥕','Zanahoria (1 kg)',.4],['🍅','Tomate (1 kg)',.6],['🥔','Patatas (1 kg)',.35],['🧅','Cebolla (1 kg)',.4],['🥬','Lechuga',.7],['🥦','Brócoli',1],['🌽','Mazorca de maíz',.8],['🥒','Pepino',.6],['🫑','Pimiento',.9],['🍆','Berenjena',.8],['🥐','Calabacín',.7],['🧄','Ajo',.5],['🍄','Champiñones',1.1],['🎃','Calabaza',.9],['🫛','Guisantes',1]],
+L:[['🥛','Leche entera',.9],['🥛','Leche sin lactosa',1.3],['🧀','Queso curado',2.8],['🧀','Queso fresco',2.2],['🧀','Queso rallado',1.9],['🥣','Yogur natural',.7],['🥣','Yogur de sabores',.9],['🧈','Mantequilla',1.8],['🍶','Nata para cocinar',1.2],['🥚','Huevos (docena)',1.6],['🍮','Flan',1],['🍦','Helado tarrina',2.9]],
+C:[['🍗','Pollo entero',3.2],['🍗','Pechuga de pollo',3.8],['🥩','Ternera',5.5],['🥩','Chuletas de cerdo',4.2],['🥓','Bacon',2.9],['🌭','Salchichas',2.4],['🍖','Costillas',4.6],['🥩','Carne picada',3.9],['🦃','Pavo',3.6],['🍗','Alitas de pollo',2.8],['🥓','Jamón serrano',6.8],['🍖','Chorizo',2.6],['🥩','Chuletón de vaca',7.9],['🥩','Morcilla',2.2]],
+X:[['🐟','Merluza',4.8],['🐟','Salmón',6.2],['🦐','Gambas',5.6],['🐟','Sardinas',2.9],['🦑','Calamares',4.4],['🐟','Atún fresco',5.9],['🦪','Mejillones',3.4],['🐙','Pulpo',7.4],['🐟','Trucha',4.1]],
+P:[['🥖','Baguette',.8],['🍞','Pan de molde',1.2],['🥐','Croissant',.9],['🥯','Bagel',1],['🍩','Dónut',1.1],['🧁','Magdalena',.8],['🥧','Tarta de manzana',3.5],['🍪','Galletas caseras',1.6],['🥨','Pretzel',.9],['🍰','Tarta de chocolate',4.2],['🍞','Pan integral',1.4],['🥖','Chapata',.7]],
+B:[['💧','Agua mineral 1,5 L',.5],['🥤','Refresco de cola',1.1],['🥤','Refresco de naranja',1],['🧃','Zumo de naranja',1.4],['🧃','Zumo multifrutas',1.5],['🍺','Cerveza',1.3],['🍺','Cerveza artesana',2.4],['🍷','Vino tinto',4.5],['🍾','Cava',5.8],['☕','Café molido',3.2],['🍵','Té verde',2.1],['⚡','Bebida energética',1.7],['🥥','Agua de coco',1.9],['🍶','Kombucha',2.6],['🍋','Limonada',1.3]],
+S:[['🥔','Patatas fritas',1.2],['🍿','Palomitas',1],['🥜','Cacahuetes',1.1],['🥜','Almendras',2.2],['🌰','Mix de frutos secos',2.6],['🍿','Maíz para palomitas',.9],['🥖','Colines',.8],['🧀','Nachos',1.5],['🫒','Aceitunas',1.2],['🥜','Pistachos',2.9],['🧀','Snacks de queso',1.3],['🍫','Barritas de cereales',1.7]],
+D:[['🍫','Tableta de chocolate',1.3],['🍫','Chocolate con almendras',1.7],['🍬','Caramelos',.9],['🍭','Piruletas',.7],['🍬','Regaliz',.8],['🍬','Gominolas',1.1],['🍪','Galletas de chocolate',1.4],['🍪','Galletas rellenas',1.6],['🍩','Bollería industrial',1.5],['🍫','Cacao en polvo',2],['🍬','Chicles',.6],['🍮','Natillas',1.1]],
+N:[['🍚','Arroz (1 kg)',1],['🍝','Espaguetis',.9],['🍜','Fideos',.8],['🫙','Tomate frito',1.1],['🥫','Atún en lata',1.4],['🫘','Alubias',1],['🫘','Lentejas',1],['🫘','Garbanzos',1],['🫒','Aceite de oliva',4.2],['🌻','Aceite de girasol',2.6],['🧂','Sal',.5],['🍯','Miel',2.8],['🌶️','Especias',1.2],['🍶','Vinagre',1.1],['🥫','Conservas de verduras',1.3]],
+M:[['☕','Cacao soluble',2.4],['🥣','Cereales de desayuno',2.2],['🥣','Cereales infantiles',2.6],['🍞','Biscotes',1.3],['🍓','Mermelada',1.7],['🧈','Margarina',1.5],['🍫','Crema de cacao',2.7],['🥛','Leche de avena',1.8],['🍵','Té en bolsitas',1.9],['🍪','Galletas María',1.1],['🧇','Gofres',1.8]],
+Z:[['🍕','Pizza congelada',2.8],['🥟','Empanadillas',2.2],['🍤','Langostinos congelados',4.9],['🥦','Verduras congeladas',1.6],['🍟','Patatas congeladas',1.8],['🍦','Helado familiar',3.6],['🧊','Hielo (bolsa)',.8],['🍗','Nuggets',2.7],['🐟','Palitos de pescado',2.5],['🥟','Croquetas',2.3]],
+H:[['🧴','Detergente líquido',3.4],['🧺','Cápsulas lavadora',4.6],['🧼','Lavavajillas',1.6],['🧽','Estropajos',1],['🧻','Papel higiénico (12 rollos)',3.8],['🧻','Papel de cocina',2.2],['🧴','Lejía',1.3],['🧴','Limpiasuelos',2],['🧴','Limpia cristales',1.8],['🗑️','Bolsas de basura',1.7],['🧴','Suavizante',2.4],['🌸','Ambientador',2.1]],
+A:[['🧴','Champú',2.6],['🧴','Gel de ducha',2],['🧼','Pastilla de jabón',.9],['🪥','Pasta de dientes',1.7],['🪥','Cepillo de dientes',1.4],['🧴','Desodorante',2.3],['🧻','Pañuelos',1.1],['🧴','Crema hidratante',3.1],['🧴','Protector solar',4.8],['🪒','Cuchillas de afeitar',3.9],['🧴','Laca',2.5],['🦷','Hilo dental',1.2]],
+T:[['🐶','Pienso para perro',3.8],['🐱','Pienso para gato',3.4],['🦴','Snacks para perro',1.8],['🐾','Arena para gato',3.2],['🐠','Comida para peces',1.4],['🐹','Pienso para roedores',1.6],['🦮','Collar',2.9],['🧸','Juguete para mascota',2.4]],
+Y:[['🍼','Leche infantil',6.5],['🥣','Papillas',2.4],['🧷','Pañales',5.2],['🧻','Toallitas',2.1],['🥣','Potitos',1.6]],
+G:[['🧀','Queso manchego',6.5],['🥩','Solomillo',8.9],['🍾','Champán',12],['🐟','Caviar',15],['🍤','Bogavante',12.5],['🫒','Aceite de trufa',7.8],['🍫','Chocolate belga',4.9],['🧀','Parmesano',5.6],['🍷','Vino reserva',8.5],['🥓','Jamón ibérico',12.8]]};
+const CAT_UNLOCK={A:2,Z:3,T:4,Y:5,G:8};
+const UNLOCK_OVR={'Cava':3,'Helado familiar':2,'Bebida energética':2,'Kombucha':4,'Tarta de chocolate':2,'Chuletón de vaca':6,'Pulpo':4,'Bogavante':7};
+const POP_OVR={'Leche entera':10,'Huevos (docena)':10,'Pan de molde':9,'Baguette':9,'Agua mineral 1,5 L':9,'Refresco de cola':9,'Arroz (1 kg)':8,'Papel higiénico (12 rollos)':8,'Patatas (1 kg)':8,'Plátano de Canarias':9,'Cerveza':8,'Detergente líquido':7,'Tomate (1 kg)':8,'Manzana':8};
+const PERISH=new Set(['F','V','C','X','P','Z','L']);
+const PRODUCTS=[];
+(function(){let id=0;for(const [cat] of CATS)for(const [e,n,c] of RAW[cat]){
+ let h=0;for(let i=0;i<n.length;i++)h=(h*31+n.charCodeAt(i))>>>0;
+ PRODUCTS.push({id:id++,emoji:e,name:n,cost:c,cat,pop:POP_OVR[n]??(4+h%6),unlock:UNLOCK_OVR[n]??CAT_UNLOCK[cat]??1,fair:+(c*1.55).toFixed(2)});}})();
+const byId=Object.fromEntries(PRODUCTS.map(p=>[p.id,p]));
+
+/* ================= ESTADO ================= */
+const KEY='superTycoonV2';
+const BOTS=[
+ {id:'b1',name:'Marta',emoji:'👩‍',color:'#e06565'},{id:'b2',name:'Ahmed',emoji:'🧔',color:'#5aa7d6'},
+ {id:'b3',name:'Rosa',emoji:'👵',color:'#b98ad6'},{id:'b4',name:'Iván',emoji:'🧑‍🦱',color:'#7fbf5f'},
+ {id:'b5',name:'Chloe',emoji:'👱‍♀️',color:'#e8b23c'}];
+ const ORIGINS={
+  worker:{id:'worker',icon:'📦',name:'Clase trabajadora',title:'El Soñador del Barrio',wallet:2500,cash:5000,rep:3,energyMax:100,loan:10000,dailyLoan:240,requiredShifts:2,tax:0,desc:'Turnos dobles obligatorios, préstamo bancario y crecimiento progresivo con microcréditos locales.'},
+  lottery:{id:'lottery',icon:'🎟️',name:'Ganador de lotería',title:'El Gran Inversor Sin Experiencia',wallet:1500000,cash:500000,rep:1.5,energyMax:100,loan:0,dailyLoan:0,requiredShifts:0,tax:4200,desc:'Gran capacidad de inversión, pero con impuestos patrimoniales, inspecciones y competidores más agresivos.'},
+  vulnerable:{id:'vulnerable',icon:'✉️',name:'Clase vulnerable',title:'Lucha por Sobrevivir',wallet:150,cash:500,rep:2.5,energyMax:70,loan:0,dailyLoan:0,requiredShifts:0,tax:0,desc:'Energía máxima reducida, gastos difíciles de cubrir y acceso gradual a ayudas y microcréditos.'}
+ };
+ function fresh(){const d=new Date();return{
+ name:'SUPERGANGA',pname:'ALEX',mode:'cpu',room:'barrio-1',background:'lottery',loanBalance:0,energyMax:100,
+ cash:500000,wallet:1500000,energy:100,mood:70,day:1,tick:0,clockMin:d.getHours()*60+d.getMinutes(),
+ rep:3,xp:0,level:1,paused:true,started:false,muted:false,speed:1,
+ stock:{},prices:{},sold:{},up:{shelf:0,reg:0,mkt:0,sup:0,auto:0,deco:0},
+ tot:{rev:0,buy:0,sal:0,rent:0,cust:0,items:0},dd:{rev:0,buy:0,cust:0,items:0},
+ mk:{},mkPrev:{},event:null,forecast:null,
+ contracts:{N:0,C:0,L:0},properties:[],landBuildings:{},vanLv:0,fuelToday:false,restDeal:false,catered:false,
+ houseUp:{sofa:0,cocina:0,jardin:0},shifts:0,napped:false,greeted:{},
+ orders:[],offers:[],rel:{},botState:{},econLog:[],
+ nodes:{},ownedNodes:{},rentedNodes:{},
+ // NUEVAS PROPIEDADES
+ districts:{}, districtBonuses:{}, auctions:[], supplyContracts:[], priceCartels:[], globalEvents:[], boycotts:[], dayBonus:null
+};}
+let S=fresh();
+const cap=()=>250+S.up.shelf*150+S.vanLv*40;
+const totalStock=()=>{let t=0;for(const k in S.stock)t+=S.stock[k];return t;};
+const mkCost=id=>{const p=byId[id];const base=(S.mk[id]??p.cost)||p.fair||1;return Math.max(.01,r2(base*(1-.04*S.up.sup)*(1-.06*(S.contracts[p.cat]||0))*(S.event&&S.event.price||1)));};
+const priceOf=id=>S.prices[id]??byId[id].fair;
+function appeal(id){const f=byId[id].fair,p=priceOf(id);return Math.min(byId[id].pop*Math.pow(f/p,2),byId[id].pop*2.2);}
+const needXP=l=>Math.round(110*Math.pow(l,1.6));
+function fluct(){S.mkPrev=S.mk;S.mk={};for(const p of PRODUCTS)S.mk[p.id]=r2(p.cost*(.82+Math.random()*.36));
+ if(S.forecast){const f=S.forecast;for(const p of PRODUCTS)if(p.cat===f.cat)S.mk[p.id]=r2(S.mk[p.id]*(f.dir==='up'?1.28:.75));
+  feed(`🔮 El chisme del bar se cumple: ${CATNAME[f.cat]} ${f.dir==='up'?'sube':'baja'} de precio.`);S.forecast=null;}}
+function save(){localStorage.setItem(KEY,JSON.stringify(S));}
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(!d||!d.stock)return false;
+ const f=fresh();S=Object.assign(f,d);S.up=Object.assign(f.up,d.up);S.tot=Object.assign(f.tot,d.tot);
+ S.dd=Object.assign(f.dd,d.dd);S.houseUp=Object.assign(f.houseUp,d.houseUp);
+ S.nodes=Object.assign(f.nodes,d.nodes||{});
+ S.ownedNodes=Object.assign(f.ownedNodes,d.ownedNodes||{});
+ S.rentedNodes=Object.assign(f.rentedNodes,d.rentedNodes||{});
+ S.districts=S.districts||{};S.districtBonuses=S.districtBonuses||{};
+ S.auctions=S.auctions||[];S.supplyContracts=S.supplyContracts||[];
+ S.priceCartels=S.priceCartels||[];S.globalEvents=S.globalEvents||[];
+ S.boycotts=S.boycotts||[];S.dayBonus=S.dayBonus||null;
+ S.clockMin=nowMin();S.paused=true;return true;}catch(e){return false;}}
+
+/* ============ SONIDO / UI ============ */
+let AC;function snd(f,d=.07,type='square',g=.03){if(S.muted)return;
+ try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+ const o=AC.createOscillator(),v=AC.createGain();o.type=type;o.frequency.value=f;v.gain.value=g;
+ v.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.connect(v);v.connect(AC.destination);o.start();o.stop(AC.currentTime+d);}catch(e){}}
+const sSale=()=>snd(680+Math.random()*180,.06,'square',.022),sBuy=()=>snd(392,.08,'triangle',.04);
+const sLevel=()=>{[523,659,784,1047].forEach((f,i)=>setTimeout(()=>snd(f,.12,'triangle',.05),i*90));};
+function toast(m){const t=document.createElement('div');t.className='toast';t.innerHTML=m;$('toasts').appendChild(t);setTimeout(()=>t.remove(),3600);}
+function feed(m,cls=''){const d=document.createElement('div');if(cls)d.className=cls;
+ const h=Math.floor(S.clockMin/60),mn=S.clockMin%60;
+ d.innerHTML=`<span class="t">${String(h).padStart(2,'0')}:${String(mn).padStart(2,'0')}</span>${m}`;
+ const f=$('feed');f.prepend(d);while(f.children.length>45)f.lastChild.remove();}
+function ticker(m){const t=$('ticker');t.style.opacity=0;setTimeout(()=>{t.textContent=m;t.style.opacity=1;},300);}
+function fx(text,cls){const r=$('topbar').getBoundingClientRect();
+ const s=document.createElement('span');s.className='fx '+cls;s.textContent=text;
+ s.style.left=(r.left+60+Math.random()*120)+'px';s.style.top=(r.bottom+4)+'px';
+ document.body.appendChild(s);setTimeout(()=>s.remove(),1200);}
+function shakeEl(e){e.classList.remove('shake');void e.offsetWidth;e.classList.add('shake');}
+function spendE(n){if(S.energy<n){toast('😴 Sin energía: ve a casa a dormir o come algo.');return false;}S.energy-=n;updateHUD();return true;}
+function addStock(pid,q){S.stock[pid]=(S.stock[pid]||0)+q;dirty.add(pid);if(S.prices[pid]===undefined)S.prices[pid]=byId[pid].fair;}
+
+/* ================= SIM SUPER ================= */
+let dirty=new Set(),POOL=[],PTOT=0;
+function buildPool(){POOL=[];PTOT=0;for(const k in S.stock){if(S.stock[k]<=0)continue;
+ const w=appeal(+k);if(w>.01){POOL.push({id:+k,w});PTOT+=w;}}}
+function pickItem(){let g=20;while(g--&&PTOT>0){let r=Math.random()*PTOT,e=POOL[POOL.length-1];
+ for(const it of POOL){r-=it.w;if(r<=0){e=it;break;}}
+ if(e.w>0&&(S.stock[e.id]||0)>0)return e;e.w=0;PTOT=POOL.reduce((a,b)=>a+b.w,0);}return null;}
+function repNudge(d){if(d<0)d*=Math.max(.3,1-S.up.deco*.12);S.rep=Math.max(0,Math.min(5,S.rep+d));}
+const PERSON=['🧍','','👨','','👴','','👱‍♀️','🧔','‍🦰'];
+function customer(){
+ if(!PTOT){repNudge(-.02);return;}
+ // === NUEVO: aplicar bonificaciones de distrito y boicots ===
+ const district = 'colon'; // por defecto (se puede asignar según ubicación del super)
+ const bonus = getDistrictBonusForNode('node11');
+ const extraClientes = bonus.clientes || 0;
+ let clientes = 1 + Math.floor(Math.random()*(2.2+S.up.reg*.7)) + extraClientes*0.5;
+ const boycotted = S.boycotts.some(b=>b.targetPlayer===S.pname && b.active);
+ if(boycotted) clientes = Math.max(0, clientes-3);
+ if(S.dayBonus && S.dayBonus.clientes && S.dayBonus.expires > S.day){
+   clientes *= (1 + S.dayBonus.clientes);
+ }
+ // === fin nuevo ===
+ S.dd.cust += clientes;
+ S.tot.cust += clientes;
+ let rev=0, units=0;
+ for(let j=0;j<clientes;j++){
+   const e = pickItem();
+   if(!e) continue;
+   const ap=appeal(e.id), p=priceOf(e.id);
+   if(Math.random()<ap/(ap+5)){
+     S.stock[e.id]--; dirty.add(e.id);
+     if(S.stock[e.id]<=0){delete S.stock[e.id]; const i=POOL.findIndex(x=>x.id===e.id); if(i>=0){POOL.splice(i,1); PTOT-=e.w;}}
+     S.cash+=p; rev+=p; units++;
+     const s=S.sold[e.id]||(S.sold[e.id]=[0,0,0]); s[0]++; s[1]+=p; s[2]+=mkCost(e.id);
+     gainXP(1); repNudge(p<=byId[e.id].fair?.004:(p>byId[e.id].fair*1.7?-.008:.001));
+   }
+ }
+ if(units>0){S.dd.items+=units;S.tot.items+=units;S.dd.rev+=rev;S.tot.rev+=rev;
+  feed(`${rnd(PERSON)} Venta ×${units} — <b>${fmt$(rev)}</b>`,'good');sSale();fx('+'+fmt$(rev),'plus');}
+}
+function hourF(h){if(h>=23||h<7)return .06;if(h<9)return .45;if(h>=21)return .35;
+ return .55+.9*Math.exp(-Math.pow(h-12,2)/2.2)+.8*Math.exp(-Math.pow(h-19,2)/2);}
+function autoRestock(){const L=S.up.auto;if(!L)return;let budget=60*L,cnt=0;
+ const tops=PRODUCTS.filter(p=>S.sold[p.id]&&S.sold[p.id][0]>5&&(S.stock[p.id]||0)<6)
+  .sort((a,b)=>S.sold[b.id][0]-S.sold[a.id][0]).slice(0,4*L);
+ for(const p of tops){const c=mkCost(p.id),space=cap()-totalStock();
+  const q=Math.min(8,Math.floor(budget/c),space);if(q<=0)continue;
+  budget-=q*c;S.cash-=q*c;S.dd.buy+=q*c;S.tot.buy+=q*c;addStock(p.id,q);cnt+=q;}
+ if(cnt)feed(`🤖 Reposición automática: +${cnt} uds.`);}
+function gainXP(n){S.xp+=n;while(S.xp>=needXP(S.level)){S.xp-=needXP(S.level);S.level++;levelUp();}}
+function levelUp(){sLevel();const news=PRODUCTS.filter(p=>p.unlock===S.level);
+ toast(`🎉 ¡Nivel ${S.level}!${news.length?' +'+news.length+' productos nuevos':''}`);
+ feed(`🏆 ¡Nivel ${S.level} alcanzado!`,'good');renderMarket();}
+function tickOnce(){
+ S.tick++;
+ const prevMin=S.clockMin;S.clockMin=nowMin();
+ if(S.clockMin<prevMin){endDay();return;}
+ const h=S.clockMin/60;
+ const flow=(1.15+S.up.mkt*.55+(S.fuelToday?.35:0))*(0.7+S.rep/5*.55)*hourF(h)*(S.event&&S.event.cust||1)*(0.9+S.mood/1000);
+ let n=Math.floor(flow);if(Math.random()<flow-n)n++;
+ buildPool();for(let i=0;i<n;i++)customer();
+ if(S.tick%5===0)autoRestock();
+ updateHUD();updateDynamic();}
+
+/* ================= FIN DE DÍA (medianoche) ================= */
+function endDay(){
+ S.paused=true;
+ const sal=S.up.reg*280+S.up.auto*160,rent=1800+S.level*420+S.up.shelf*300;
+ const loanPay=S.loanBalance>0?Math.min(S.loanBalance,S.dailyLoan||0):0;S.cash-=sal+rent+loanPay;S.tot.sal+=sal;S.tot.rent+=rent;logEconomy('Gasto',`Salarios y alquileres del supermercado`,sal+rent,'Sistema');S.loanBalance=Math.max(0,S.loanBalance-loanPay);
+ if(S.requiredShifts&&S.shifts<S.requiredShifts){const penalty=(S.requiredShifts-S.shifts)*380;S.wallet-=penalty;toast(`⚠️ Faltaron turnos: −${fmt$(penalty)}.`);}
+ // === NUEVO: bonificación de distrito en impuestos ===
+ const bonus = S.districtBonuses['ruzaffa'] ? -0.15 : 0;
+ const tax = S.originTax || 0;
+ const taxFinal = Math.max(0, tax * (1 + bonus));
+ S.wallet -= taxFinal;
+ if(taxFinal) logEconomy('Impuesto','Impuesto patrimonial (con bonificación)',taxFinal,'Hacienda');
+ // === fin nuevo ===
+ const wage=950+S.level*180;let paidW=false;
+ if(S.cash>=wage){S.cash-=wage;S.wallet+=wage;paidW=true;}
+ let restSold=0;
+ if(S.restDeal){const ids=Object.keys(S.stock).filter(k=>S.stock[k]>0);
+  for(let i=0;i<20&&ids.length;i++){const id=+rnd(ids);if(S.stock[id]<=0)continue;
+   S.stock[id]--;dirty.add(id);const pay=r2(byId[id].fair*1.2);S.cash+=pay;restSold+=pay;
+   if(S.stock[id]<=0)delete S.stock[id];}}
+ const food=S.houseUp.cocina?55:95,gastos=food+45;
+ S.wallet-=gastos;logEconomy('Gasto','Comida y luz del hogar',gastos,'Hogar');let apuros=false;
+ if(S.wallet<0){S.mood=Math.max(0,S.mood-12);S.energy=Math.max(0,S.energy-10);apuros=true;}
+ let spoiled=0;for(const k in S.stock){const p=byId[+k];
+  if(PERISH.has(p.cat)&&S.stock[k]>2){const lose=Math.ceil(S.stock[k]*.04*Math.random()*2);
+   if(lose>0){S.stock[k]-=lose;spoiled+=lose;dirty.add(+k);if(S.stock[k]<=0)delete S.stock[k];}}}
+ // Alquiler de nodos
+ let rentNodes=0;
+ for(const nid in S.rentedNodes){
+   const node=NODOS_LIBRES.find(n=>n.id===nid);
+   if(node){
+     S.wallet-=node.rent;
+     rentNodes+=node.rent;
+     logEconomy('Alquiler',`Alquiler de nodo ${node.name}`,node.rent,'Sistema');
+   }
+ }
+ if(rentNodes>0)feed(`🏗️ Alquiler de nodos: -${fmt$(rentNodes)}`);
+
+ // === NUEVO: resolver subastas, actualizar distritos, aplicar boicots, generar eventos ===
+ resolveAuctions();
+ updateDistrictControl();
+ applyBoycotts();
+ generateAuctions();
+ generateGlobalEvent();
+ for(const c of S.supplyContracts){
+   if(c.active){
+     c.daysLeft--;
+     if(c.daysLeft <= 0) c.active = false;
+   }
+ }
+ // === fin nuevo ===
+
+ S.energy=Math.min(S.energyMax||100,S.energy+55+S.houseUp.sofa*15);
+ S.mood=Math.min(S.energyMax||100,S.mood+3+S.houseUp.jardin*3);
+ for(const b of BOTS){const bs=S.botState[b.id]||(S.botState[b.id]={lv:1,money:800});
+  if(Math.random()<.35)bs.lv++;bs.money+=ri(1200,6500);}
+ const net=S.dd.rev-S.dd.buy-sal-rent;
+ $('sumDay').textContent=S.day;
+ $('sumRows').innerHTML=`
+  <div class="sumrow"><span>🛒 Ventas (${S.dd.items} uds · ${S.dd.cust} clientes)</span><span class="pos">${fmt$(S.dd.rev)}</span></div>
+  <div class="sumrow"><span>🚚 Compras al por mayor</span><span class="neg">−${fmt$(S.dd.buy)}</span></div>
+  <div class="sumrow"><span>👷 Salarios + 🏠 alquiler</span><span class="neg">−${fmt$(sal+rent)}</span></div>
+  ${loanPay?`<div class="sumrow"><span>🏦 Cuota del préstamo</span><span class="neg">−${fmt$(loanPay)}</span></div>`:''}
+  ${taxFinal?`<div class="sumrow"><span>🏛️ Impuesto patrimonial</span><span class="neg">−${fmt$(taxFinal)}</span></div>`:''}
+  ${restSold?`<div class="sumrow"><span>🍽️ Pedido del restaurante</span><span class="pos">${fmt$(restSold)}</span></div>`:''}
+  <div class="sumrow"><span>💼 Tu sueldo de gerente</span><span class="pos">${paidW?fmt$(wage):'⚠️ sin fondos'}</span></div>
+  <div class="sumrow"><span>🏡 Gastos personales (comida+luz)</span><span class="neg">−${fmt$(gastos)}</span></div>
+  ${rentNodes?`<div class="sumrow"><span>🏗️ Alquiler de nodos</span><span class="neg">−${fmt$(rentNodes)}</span></div>`:''}
+  ${spoiled?`<div class="sumrow"><span>🗑️ Merma perecederos</span><span class="neg">${spoiled} uds.</span></div>`:''}
+  <div class="sumrow total"><span>Beneficio del súper</span><span class="${net>=0?'pos':'neg'}">${fmt$(net)}</span></div>
+  <div class="sumrow"><span>💰 Caja · 💼 Cartera</span><span>${fmt$(S.cash)} · ${fmt$(S.wallet)}</span></div>`;
+ $('sumExtra').innerHTML=(S.event?`Evento: ${S.event.t}. `:'')+(apuros?'⚠️ No llegas a fin de mes: trabaja en las fábricas o retira beneficios.':'');
+ $('nextDayN').textContent=S.day+1;
+ $('modal-day').classList.add('open');
+ updateHUD();updateDynamic();save();
+ if(S.cash<-120000){$('modal-day').classList.remove('open');$('modal-broke').classList.add('open');}}
+const EVENTS=[
+ {t:'🚚 ¡Oferta del distribuidor!',d:'Mercado −20% hoy.',price:.8},
+ {t:'🎉 ¡Día de mercado!',d:'Clientes ×2.',cust:2},
+ {t:'🌧️ Día lluvioso',d:'Clientes −40%.',cust:.6},
+ {t:'📰 ¡Reseña viral!',d:'+0,4 reputación.',rep:.4},
+ {t:'🧾 Inspección sorpresa',d:'Multa.',fine:1}];
+function nextDay(){
+ $('modal-day').classList.remove('open');
+ S.day++;S.tick=0;S.dd={rev:0,buy:0,cust:0,items:0};
+ S.rep=Math.max(0,Math.min(5,S.rep+(3-S.rep)*.06));
+ S.fuelToday=false;S.catered=false;S.shifts=0;S.napped=false;S.greeted={};
+ S.orders=S.orders.filter(o=>!o.exp||o.exp>S.day);
+ fluct();S.event=null;
+ const eb=$('eventBanner');eb.style.display='none';
+ if(Math.random()<(S.background==='lottery'?.72:.5)){const ev=Object.assign({},rnd(EVENTS));S.event=ev;
+  if(ev.fine){const f=1800+S.day*240;S.cash-=f;ev.d=`Multa de ${fmt$(f)}.`;}
+  if(ev.rep)S.rep=Math.min(5,S.rep+ev.rep);
+  eb.innerHTML=`<b>Evento:</b> ${ev.t} — ${ev.d}`;eb.style.display='block';feed(`📢 ${ev.t}`);}
+ renderMarket();updateHUD();updateDynamic();S.paused=false;save();}
+
+/* ================= COMPRA / PRECIOS ================= */
+let buyQty=50;
+function buy(id,q,fill){const c=mkCost(id),space=cap()-totalStock();
+ if(space<=0){toast('📦 ¡Almacén lleno!');return;}
+ if(fill)q=space;q=Math.min(q,space,Math.floor(S.cash/c));
+ if(q<=0){toast('💸 No te llega el dinero de la caja.');shakeEl($('topbar'));return;}
+ const total=r2(c*q);S.cash-=total;S.dd.buy+=total;S.tot.buy+=total;addStock(id,q);logEconomy('Compra',`Compra de ${q} unidades de ${byId[id].name}`,total,'Mercado');
+ sBuy();fx('−'+fmt$(total),'minus');updateHUD();updateDynamic();}
+function adjPrice(id,d){const f=byId[id].fair;let p=(S.prices[id]??f)+f*.05*d;
+ S.prices[id]=r2(Math.max(f*.45,Math.min(f*3.2,p)));dirty.add(id);updateDynamic();}
+function setAll(m){for(const p of PRODUCTS)S.prices[p.id]=r2(p.fair*m);
+ document.querySelectorAll('.stratbtn').forEach(b=>b.classList.toggle('sel',+b.dataset.m===m));
+ for(const k in S.stock)dirty.add(+k);updateDynamic();toast('💲 Estrategia aplicada.');}
+
+/* ================= RENDER SÚPER ================= */
+let curCat='ALL';
+function renderMarket(){const q=norm($('searchM').value),list=$('mklist');list.innerHTML='';
+ let lastCat='',shown=0;
+ for(const p of PRODUCTS){
+  if(p.unlock>S.level||(curCat!=='ALL'&&p.cat!==curCat)||(q&&!norm(p.name).includes(q)))continue;
+  shown++;
+  if(p.cat!==lastCat){lastCat=p.cat;const h=document.createElement('div');h.className='cathead';
+   h.textContent=`${CATEMO[p.cat]} ${CATNAME[p.cat]}${S.contracts[p.cat]?' · 🤝 contrato −'+(6*S.contracts[p.cat])+'%':''}`;list.appendChild(h);}
+  const prev=S.mkPrev[p.id],now=S.mk[p.id];
+  const tr=prev?(now>prev*1.02?'<span class="trend up">▲</span>':now<prev*.98?'<span class="trend dn">▼</span>':'<span class="trend eq">▬</span>'):'';
+  const row=document.createElement('div');row.className='mrow';
+  row.innerHTML=`<div class="big-emoji">${p.emoji}</div>
+   <div><div class="pname">${p.name}</div><div class="pmeta">Demanda ${'★'.repeat(Math.max(1,Math.round(p.pop/2)))}</div></div>
+   <div class="pricebox"><span class="now num">${fmt$(mkCost(p.id))}</span> ${tr}<div class="pmeta">justo ${fmt$(p.fair)}</div></div>
+   <div><span class="badge ${S.stock[p.id]?'':'zero'} num" data-mkbadge="${p.id}">${S.stock[p.id]||0}</span></div>
+   <div class="pctrl"><button class="btn mini2" data-buy="${p.id}" title="Llenar">∞</button>
+   <button class="btn" data-buy="${p.id}" data-q="${buyQty}">×${buyQty}</button></div>`;
+  list.appendChild(row);}
+ if(!shown)list.innerHTML='<div class="emptybox">Nada por aquí… todavía.</div>';
+ $('catcount').textContent=`${shown} de ${PRODUCTS.length} productos · Nivel ${S.level}`;}
+$('mklist').addEventListener('click',e=>{const b=e.target.closest('[data-buy]');if(!b)return;
+ const id=+b.dataset.buy;b.dataset.q===undefined?buy(id,0,true):buy(id,buyQty,false);});
+$('searchM').addEventListener('input',renderMarket);
+let shelfKey='',shelfRefs={};
+function renderShelves(){const ids=Object.keys(S.stock).map(Number).sort((a,b)=>a-b);
+ shelfKey=ids.join(',');const list=$('shelflist');list.innerHTML='';shelfRefs={};
+ $('shelfEmpty').style.display=ids.length?'none':'block';let lastCat='';
+ for(const id of ids){const p=byId[id];
+  if(p.cat!==lastCat){lastCat=p.cat;const h=document.createElement('div');h.className='cathead';
+   h.textContent=`${CATEMO[p.cat]} ${CATNAME[p.cat]}`;list.appendChild(h);}
+  const row=document.createElement('div');row.className='srow';
+  row.innerHTML=`<div class="big-emoji">${p.emoji}</div>
+   <div><div class="pname">${p.name}</div><div class="pmeta">Coste hoy: ${fmt$(mkCost(id))}</div></div>
+   <div><span class="badge num" data-sstock>${S.stock[id]}</span></div>
+   <div><span data-sdem>🔥</span> <div class="dem"><i data-sdembar></i></div></div>
+   <div class="pctrl"><button class="btn mini2" data-pd="${id}">−</button>
+    <div><span class="pprice num" data-sprice>${fmt$(priceOf(id))}</span><span class="pmarg" data-smarg></span></div>
+    <button class="btn mini2" data-pu="${id}">+</button></div>
+   <div class="gain">Vendidos: <b class="num" data-ssold>0</b><br><span data-sgain></span></div>`;
+  list.appendChild(row);
+  shelfRefs[id]={stock:row.querySelector('[data-sstock]'),price:row.querySelector('[data-sprice]'),
+   marg:row.querySelector('[data-smarg]'),dem:row.querySelector('[data-sdem]'),
+   dembar:row.querySelector('[data-sdembar]'),sold:row.querySelector('[data-ssold]'),gain:row.querySelector('[data-sgain]')};}
+ updateShelfVals();}
+function updateShelfVals(){for(const id in shelfRefs){const r=shelfRefs[id],p=byId[id],pr=priceOf(id),ap=appeal(+id);
+ r.stock.textContent=S.stock[id]||0;r.price.textContent=fmt$(pr);
+ const marg=Math.round((pr/p.cost-1)*100);r.marg.textContent=marg+'%';r.marg.style.color=marg<10?'#c62f20':'#1e9e50';
+ r.dem.textContent=ap>=8?'🔥':ap>=5?'📈':ap>=2.5?'😐':'💤';r.dembar.style.width=Math.min(S.energyMax||100,ap/12*100)+'%';
+ const s=S.sold[id];r.sold.textContent=s?fmtI(s[0]):0;r.gain.textContent=s?'+'+fmt$(s[1]-s[2]):'—';}}
+function updateDynamic(){const k=Object.keys(S.stock).map(Number).sort((a,b)=>a-b).join(',');
+ if(k!==shelfKey)renderShelves();else updateShelfVals();
+ for(const id of dirty){const b=document.querySelector(`[data-mkbadge="${id}"]`);
+  if(b){b.textContent=S.stock[id]||0;b.classList.toggle('zero',!S.stock[id]);}}
+ dirty.clear();}
+const UPS=[
+ {k:'shelf',e:'🗄️',n:'Estanterías',d:'+150 de capacidad por nivel.',base:14000,max:10},
+ {k:'reg',e:'🛒',n:'Cajas registradoras',d:'Más artículos por cliente. €280/día por caja.',base:28000,max:8},
+ {k:'mkt',e:'📣',n:'Publicidad',d:'Más clientes cada día.',base:35000,max:8},
+ {k:'sup',e:'🤝',n:'Buenos proveedores',d:'−4% en compras por nivel.',base:48000,max:8},
+ {k:'auto',e:'🤖',n:'Reponedor automático',d:'Recompra tus éxitos. €160/día por nivel.',base:65000,max:6},
+ {k:'deco',e:'🎨',n:'Decoración',d:'Protege tu reputación.',base:22000,max:6}];
+const upCost=u=>Math.round(u.base*Math.pow(1.65,S.up[u.k]));
+function renderUps(){$('uplist').innerHTML=UPS.map(u=>{const lv=S.up[u.k],mx=lv>=u.max;
+ return `<div class="ucard"><div class="uhead"><span class="uemoji">${u.e}</span><h3>${u.n}</h3></div>
+  <p>${u.d}</p><div class="pips">${Array.from({length:u.max},(_,i)=>`<span class="pip${i<lv?' on':''}"></span>`).join('')}</div>
+  ${mx?'<div class="maxed">✅ ¡MÁXIMO!</div>':`<button class="btn" data-up="${u.k}" ${S.cash<upCost(u)?'disabled':''}>Mejorar · ${fmt$(upCost(u))}</button>`}</div>`;}).join('');}
+$('uplist').addEventListener('click',e=>{const b=e.target.closest('[data-up]');if(!b)return;
+ const u=UPS.find(x=>x.k===b.dataset.k),c=upCost(u);if(S.cash<c){shakeEl($('topbar'));return;}
+ S.cash-=c;S.up[u.k]++;sLevel();feed(`${u.e} Mejora: ${u.n} nv.${S.up[u.k]}`,'good');renderUps();updateHUD();});
+function renderStats(){const t=S.tot;
+ const top=Object.entries(S.sold).map(([id,s])=>({p:byId[+id],u:s[0],g:s[1]-s[2]})).sort((a,b)=>b.g-a.g).slice(0,5);
+ $('statsbox').innerHTML=`<div class="sgrid">
+  <div class="stat"><div class="v">${S.day}</div><div class="k">Días</div></div>
+  <div class="stat"><div class="v">${fmtI(t.cust)}</div><div class="k">Clientes</div></div>
+  <div class="stat"><div class="v">${fmtI(t.items)}</div><div class="k">Uds. vendidas</div></div>
+  <div class="stat"><div class="v">${fmt$(t.rev)}</div><div class="k">Ingresos</div></div>
+  <div class="stat"><div class="v">${fmt$(t.buy)}</div><div class="k">En mercancía</div></div>
+  <div class="stat"><div class="v">${fmt$(t.sal+t.rent)}</div><div class="k">Sueldos+alquiler</div></div></div>
+  <h3 style="font-family:'Bungee';color:var(--red);margin-bottom:6px">🏆 Top 5 por beneficio</h3>
+  ${top.length?top.map((x,i)=>`<div class="toprow"><span>${['🥇','🥈','🥉','4º','5º'][i]} ${x.p.emoji} ${x.p.name}</span>
+   <span class="num">${fmtI(x.u)} uds · <b style="color:#1e9e50">${fmt$(x.g)}</b></span></div>`).join(''):'<div class="emptybox">Aún no has vendido nada.</div>'}`;}
+
+/* ================= MAPA 2D — VALENCIA REAL ================= */
+const START_ESTABLISHMENTS=[
+ {id:'est01',name:'Horchatería Santa Catalina',emoji:'🍺',type:'Ocio y chismes',cost:180000,lat:39.47388,lng:-0.37606},
+ {id:'est02',name:'Casa Carmela',emoji:'🍽️',type:'Restaurante',cost:320000,lat:39.4762,lng:-0.3236},
+ {id:'est03',name:'Gasolinera Repsol · Av. Primado Reig',emoji:'⛽',type:'Gasolinera',cost:260000,lat:39.4790,lng:-0.3610},
+ {id:'est04',name:'Puesto de Conservas · Mercado Central',emoji:'🥫',type:'Despensa',cost:145000,lat:39.4736,lng:-0.3788},
+ {id:'est05',name:'Charcutería · Mercado Central',emoji:'🥓',type:'Carnicería',cost:210000,lat:39.4734,lng:-0.3791},
+ {id:'est06',name:'Lechería y Quesos · Mercado Central',emoji:'🧀',type:'Lácteos',cost:195000,lat:39.4737,lng:-0.3785},
+ {id:'est07',name:'Panadería del Carmen',emoji:'🥖',type:'Panadería',cost:120000,lat:39.4772,lng:-0.3789},
+ {id:'est08',name:'Frutería de Ruzafa',emoji:'🍎',type:'Frutería',cost:110000,lat:39.4611,lng:-0.3757},
+ {id:'est09',name:'Supermercado Benimaclet',emoji:'🛒',type:'Comercio local',cost:280000,lat:39.4838,lng:-0.3644},
+ {id:'est10',name:'Kiosco de Malvarrosa',emoji:'📰',type:'Kiosco',cost:85000,lat:39.4720,lng:-0.3280},
+ {id:'est11',name:'Mercado de Campanar',emoji:'🏬',type:'Mercado',cost:350000,lat:39.4775,lng:-0.3956},
+ {id:'est12',name:'Cafetería Colón',emoji:'☕',type:'Café',cost:160000,lat:39.4671,lng:-0.3699},
+ {id:'est13',name:'Pescadería del Cabanyal',emoji:'🐟',type:'Pescadería',cost:220000,lat:39.4632,lng:-0.3318},
+ {id:'est14',name:'Bodega del Carmen',emoji:'🍷',type:'Bebidas',cost:180000,lat:39.4783,lng:-0.3798},
+ {id:'est15',name:'Tienda Gourmet de Ruzafa',emoji:'🍾',type:'Gourmet',cost:420000,lat:39.4618,lng:-0.3740},
+ {id:'est16',name:'Dulces de Valencia',emoji:'🍫',type:'Dulces',cost:130000,lat:39.4690,lng:-0.3770},
+ {id:'est17',name:'Limpiezas Turia',emoji:'🧴',type:'Limpieza',cost:150000,lat:39.4705,lng:-0.3860},
+ {id:'est18',name:'Mascotas Mestalla',emoji:'🐶',type:'Mascotas',cost:190000,lat:39.4740,lng:-0.3580},
+ {id:'est19',name:'Tienda Bebé Aragón',emoji:'🍼',type:'Bebés',cost:230000,lat:39.4720,lng:-0.3610},
+ {id:'est20',name:'Congelados del Puerto',emoji:'🧊',type:'Congelados',cost:200000,lat:39.4595,lng:-0.3470},
+ {id:'est21',name:'Zara · Calle Colón',emoji:'👗',type:'Ropa',cost:280000,lat:39.4682,lng:-0.3729},
+ {id:'est22',name:'H&M · Calle Colón',emoji:'🧥',type:'Ropa',cost:210000,lat:39.4686,lng:-0.3719},
+ {id:'est23',name:'Pull&Bear · Calle Colón',emoji:'👕',type:'Ropa',cost:175000,lat:39.4676,lng:-0.3734},
+ {id:'est24',name:'Nike Store · Xàtiva',emoji:'👟',type:'Ropa deportiva',cost:225000,lat:39.4664,lng:-0.3777},
+ {id:'est25',name:'Decathlon City València',emoji:'🏸',type:'Deporte',cost:310000,lat:39.4776,lng:-0.3958},
+ {id:'est26',name:'MediaMarkt · Colón',emoji:'📱',type:'Electrónica',cost:360000,lat:39.4691,lng:-0.3736},
+ {id:'est27',name:'El Corte Inglés · Pintor Sorolla',emoji:'🏬',type:'Grandes almacenes',cost:520000,lat:39.4695,lng:-0.3741},
+ {id:'est28',name:'Bowling Center Valencia',emoji:'🎳',type:'Ocio y entretenimiento',cost:275000,lat:39.4790,lng:-0.3982},
+ {id:'est29',name:'Cosmic Bowling',emoji:'🕹️',type:'Ocio y entretenimiento',cost:235000,lat:39.4568,lng:-0.3812},
+ {id:'est30',name:'Jardines de Viveros',emoji:'🌳',type:'Parque',cost:150000,lat:39.4805,lng:-0.3677},
+ {id:'est31',name:'Parque Gulliver',emoji:'🎡',type:'Parque y ocio',cost:165000,lat:39.4625,lng:-0.3600},
+ {id:'est32',name:'Lefties · Calle Colón',emoji:'👚',type:'Ropa',cost:165000,lat:39.4680,lng:-0.3725}
+];
+
+/* ================= TERRENOS Y EDIFICIOS ================= */
+const LAND_ICONS={Land:'🟩',Residential:'🏘️',Farm:'🌾',Factory:'🏭',Commercial:'🏬',Amenity:'🎡',Service:'🏛️',Utility:'⚙️',Transport:'🚉'};
+const LAND_BUILDINGS=[
+ {id:'lb01',name:'Terreno Básico',type:'Land',size:100,produce:'',desc:'Ideal para construcciones iniciales.',price:500},
+ {id:'lb02',name:'Edificio Residencial Pequeño',type:'Residential',size:120,produce:'10 Residentes',desc:'Apto para 10 residentes.',price:1200},
+ {id:'lb03',name:'Granja de Cultivos',type:'Farm',size:200,produce:'80 Alimentos',desc:'Produce alimentos básicos.',price:1800},
+ {id:'lb04',name:'Aserradero',type:'Factory',size:250,produce:'50 Madera',desc:'Produce madera para la construcción.',price:2500},
+ {id:'lb05',name:'Mina de Carbón',type:'Factory',size:300,produce:'40 Carbón',desc:'Fuente de energía esencial.',price:3000},
+ {id:'lb06',name:'Fábrica de Herramientas',type:'Factory',size:280,produce:'20 Herramientas',desc:'Crea herramientas para otras industrias.',price:3500},
+ {id:'lb07',name:'Edificio Comercial',type:'Commercial',size:180,produce:'200 Beneficio',desc:'Genera ingresos pasivos.',price:4000},
+ {id:'lb08',name:'Parque Pequeño',type:'Amenity',size:80,produce:'5 Felicidad',desc:'Mejora la felicidad de los residentes.',price:800},
+ {id:'lb09',name:'Estación de Bomberos',type:'Service',size:100,produce:'10 Seguridad',desc:'Protege tu ciudad de incendios.',price:2000},
+ {id:'lb10',name:'Comisaría de Policía',type:'Service',size:110,produce:'12 Seguridad',desc:'Reduce la criminalidad.',price:2200},
+ {id:'lb11',name:'Hospital Básico',type:'Service',size:220,produce:'15 Salud',desc:'Mejora la salud pública.',price:4500},
+ {id:'lb12',name:'Escuela Primaria',type:'Service',size:180,produce:'8 Educación',desc:'Aumenta la educación de los ciudadanos.',price:3800},
+ {id:'lb13',name:'Planta de Tratamiento de Agua',type:'Utility',size:150,produce:'100 Agua',desc:'Proporciona agua limpia a tu ciudad.',price:3200},
+ {id:'lb14',name:'Planta de Energía Solar',type:'Utility',size:250,produce:'150 Energía',desc:'Genera energía limpia.',price:5000},
+ {id:'lb15',name:'Rascacielos Residencial',type:'Residential',size:300,produce:'100 Residentes',desc:'Apto para 100 residentes.',price:8000},
+ {id:'lb16',name:'Centro Comercial',type:'Commercial',size:280,produce:'500 Beneficio',desc:'Atrae turistas y genera grandes ingresos.',price:6000},
+ {id:'lb17',name:'Puerto Comercial',type:'Transport',size:400,produce:'100 Comercio',desc:'Aumenta el comercio y las importaciones.',price:7500},
+ {id:'lb18',name:'Aeropuerto',type:'Transport',size:500,produce:'150 Turismo',desc:'Conecta tu ciudad con el mundo.',price:10000},
+ {id:'lb19',name:'Universidad',type:'Service',size:350,produce:'20 Investigación',desc:'Investiga nuevas tecnologías.',price:9000},
+ {id:'lb20',name:'Estadio Deportivo',type:'Amenity',size:450,produce:'20 Felicidad',desc:'Atrae eventos y mejora la moral.',price:7000},
+ {id:'lb21',name:'Planta de Reciclaje',type:'Utility',size:200,produce:'30 Reducción Residuos',desc:'Reduce la contaminación y genera recursos.',price:4200},
+ {id:'lb22',name:'Granja Eólica',type:'Utility',size:300,produce:'100 Energía',desc:'Fuente de energía renovable.',price:5500},
+ {id:'lb23',name:'Biblioteca Pública',type:'Service',size:130,produce:'5 Educación',desc:'Fomenta el conocimiento y la cultura.',price:2800},
+ {id:'lb24',name:'Museo de Arte',type:'Amenity',size:250,produce:'50 Turismo',desc:'Atrae visitantes y aumenta el atractivo de la ciudad.',price:6500},
+ {id:'lb25',name:'Laboratorio de Investigación',type:'Factory',size:380,produce:'30 Investigación',desc:'Desarrolla nuevas tecnologías y productos.',price:9500},
+ {id:'lb26',name:'Centro de Congresos',type:'Commercial',size:320,produce:'400 Beneficio',desc:'Atrae eventos de negocios y turismo.',price:7200},
+ {id:'lb27',name:'Parque de Atracciones',type:'Amenity',size:600,produce:'30 Felicidad',desc:'Gran atractivo turístico y felicidad.',price:11000},
+ {id:'lb28',name:'Terreno Urbanizable',type:'Land',size:150,produce:'',desc:'Terreno más grande, ideal para futuras expansiones.',price:800},
+ {id:'lb29',name:'Apartamentos Medianos',type:'Residential',size:180,produce:'30 Residentes',desc:'Apto para 30 residentes.',price:3000},
+ {id:'lb30',name:'Granja Ganadera',type:'Farm',size:250,produce:'50 Alimentos',desc:'Produce carne y alimentos.',price:2500},
+ {id:'lb31',name:'Fábrica de Ladrillos',type:'Factory',size:260,produce:'60 Ladrillos',desc:'Produce ladrillos para la construcción.',price:2800},
+ {id:'lb32',name:'Mina de Hierro',type:'Factory',size:320,produce:'45 Acero',desc:'Produce acero para la industria.',price:3500},
+ {id:'lb33',name:'Tienda de Conveniencia',type:'Commercial',size:100,produce:'100 Beneficio',desc:'Pequeños ingresos por ventas locales.',price:1500},
+ {id:'lb34',name:'Jardín Botánico',type:'Amenity',size:200,produce:'10 Felicidad',desc:'Un lugar hermoso que atrae visitantes.',price:3500},
+ {id:'lb35',name:'Clínica Veterinaria',type:'Service',size:90,produce:'5 Salud',desc:'Cuida de las mascotas de la ciudad.',price:1800},
+ {id:'lb36',name:'Centro de Salud Comunitario',type:'Service',size:150,produce:'10 Salud',desc:'Ofrece servicios médicos básicos a los ciudadanos.',price:2800},
+ {id:'lb37',name:'Instituto de Bachillerato',type:'Service',size:250,produce:'15 Educación',desc:'Educación secundaria para tus ciudadanos.',price:5000},
+ {id:'lb38',name:'Embalse Pequeño',type:'Utility',size:200,produce:'200 Agua',desc:'Aumenta significativamente el suministro de agua.',price:4500},
+ {id:'lb39',name:'Central Hidroeléctrica',type:'Utility',size:400,produce:'300 Energía',desc:'Gran fuente de energía limpia.',price:8000},
+ {id:'lb40',name:'Urbanización de Lujo',type:'Residential',size:400,produce:'50 Residentes',desc:'Casas de lujo para ciudadanos de alto poder adquisitivo.',price:15000},
+ {id:'lb41',name:'Gran Almacén',type:'Commercial',size:250,produce:'300 Beneficio',desc:'Genera ingresos y almacena bienes.',price:5000},
+ {id:'lb42',name:'Estación de Autobuses',type:'Transport',size:120,produce:'15 Transporte',desc:'Mejora el transporte público en la ciudad.',price:2500},
+ {id:'lb43',name:'Estación de Tren',type:'Transport',size:300,produce:'40 Transporte',desc:'Conecta tu ciudad por vía férrea.',price:6000},
+ {id:'lb44',name:'Oficina de Correos',type:'Service',size:70,produce:'5 Servicio',desc:'Proporciona servicios postales básicos.',price:1000},
+ {id:'lb45',name:'Teatro Comunitario',type:'Amenity',size:150,produce:'8 Felicidad',desc:'Ofrece entretenimiento cultural a los residentes.',price:3000},
+ {id:'lb46',name:'Torre de Telecomunicaciones',type:'Utility',size:80,produce:'50 Comunicación',desc:'Mejora la cobertura de internet y móvil.',price:2000},
+ {id:'lb47',name:'Villas con Jardín',type:'Residential',size:200,produce:'15 Residentes',desc:'Residencias cómodas con espacio verde.',price:4000},
+ {id:'lb48',name:'Planta Procesadora de Alimentos',type:'Factory',size:300,produce:'120 Alimentos',desc:'Convierte productos agrícolas en alimentos procesados.',price:4800},
+ {id:'lb49',name:'Mercado Agrícola',type:'Commercial',size:130,produce:'150 Beneficio',desc:'Un mercado para vender productos frescos.',price:2200},
+ {id:'lb50',name:'Centro Cívico',type:'Service',size:160,produce:'7 Felicidad',desc:'Ofrece servicios municipales y comunitarios.',price:3200},
+ {id:'lb51',name:'Centro Deportivo',type:'Amenity',size:280,produce:'15 Felicidad',desc:'Instalaciones para diversas actividades deportivas.',price:4500},
+ {id:'lb52',name:'Planta de Tratamiento de Residuos',type:'Utility',size:280,produce:'50 Reducción Residuos',desc:'Gestiona eficientemente los residuos de la ciudad.',price:5500},
+ {id:'lb53',name:'Helipuerto',type:'Transport',size:100,produce:'10 Transporte',desc:'Punto de llegada y partida para helicópteros.',price:3000},
+ {id:'lb54',name:'Complejo de Apartamentos',type:'Residential',size:250,produce:'60 Residentes',desc:'Gran complejo de viviendas para muchas familias.',price:6000},
+ {id:'lb55',name:'Fábrica de Electrónica',type:'Factory',size:350,produce:'30 Electrónica',desc:'Produce componentes electrónicos de alta tecnología.',price:7000},
+ {id:'lb56',name:'Hotel de Lujo',type:'Commercial',size:350,produce:'600 Beneficio',desc:'Atrae turistas de alto poder adquisitivo.',price:8500},
+ {id:'lb57',name:'Centro de Investigación Médica',type:'Service',size:400,produce:'30 Salud',desc:'Avanza en la medicina y la salud pública.',price:10000},
+ {id:'lb58',name:'Reserva Natural',type:'Amenity',size:300,produce:'10 Felicidad',desc:'Espacio protegido para la naturaleza y la recreación.',price:2000},
+ {id:'lb59',name:'Desalinizadora',type:'Utility',size:250,produce:'300 Agua',desc:'Convierte agua de mar en agua potable.',price:7000},
+ {id:'lb60',name:'Metro',type:'Transport',size:500,produce:'80 Transporte',desc:'Sistema de transporte subterráneo eficiente.',price:12000},
+ {id:'lb61',name:'Barrio de Adosados',type:'Residential',size:250,produce:'40 Residentes',desc:'Un barrio tranquilo con casas familiares.',price:5000},
+ {id:'lb62',name:'Fábrica de Automóviles',type:'Factory',size:500,produce:'10 Vehículos',desc:'Produce vehículos para la ciudad y exportación.',price:15000},
+ {id:'lb63',name:'Distrito de Oficinas',type:'Commercial',size:400,produce:'700 Beneficio',desc:'Concentración de negocios y empleo.',price:9000},
+ {id:'lb64',name:'Academia de Policía',type:'Service',size:200,produce:'20 Seguridad',desc:'Entrena a futuros agentes de policía.',price:4000},
+ {id:'lb65',name:'Zoo',type:'Amenity',size:450,produce:'25 Felicidad',desc:'Una atracción popular para toda la familia.',price:9500},
+ {id:'lb66',name:'Planta de Biomasa',type:'Utility',size:300,produce:'180 Energía',desc:'Genera energía a partir de residuos orgánicos.',price:6000},
+ {id:'lb67',name:'Ferry Terminal',type:'Transport',size:200,produce:'20 Transporte',desc:'Conecta tu ciudad por rutas marítimas cortas.',price:4000},
+ {id:'lb68',name:'Bloque de Viviendas Sociales',type:'Residential',size:160,produce:'25 Residentes',desc:'Viviendas asequibles para la población.',price:2000},
+ {id:'lb69',name:'Impresora 3D Industrial',type:'Factory',size:300,produce:'5 Productos Personalizados',desc:'Produce productos personalizados y de alta tecnología.',price:11000},
+ {id:'lb70',name:'Galería de Arte',type:'Commercial',size:180,produce:'250 Beneficio',desc:'Vende obras de arte y fomenta la cultura.',price:5500},
+ {id:'lb71',name:'Archivo Central',type:'Service',size:100,produce:'5 Administración',desc:'Gestiona los documentos y registros de la ciudad.',price:1500},
+ {id:'lb72',name:'Piscina Olímpica',type:'Amenity',size:320,produce:'18 Felicidad',desc:'Instalaciones deportivas y recreativas de primer nivel.',price:6000},
+ {id:'lb73',name:'Red de Fibra Óptica',type:'Utility',size:100,produce:'100 Comunicación',desc:'Proporciona internet ultrarrápido a toda la ciudad.',price:8000},
+ {id:'lb74',name:'Teleférico Turístico',type:'Transport',size:150,produce:'80 Turismo',desc:'Transporte pintoresco que atrae a los turistas.',price:5000},
+ {id:'lb75',name:'Solar en Centro Ciudad',type:'Land',size:100,produce:'',desc:'Terreno muy valioso en el corazón de la ciudad.',price:12000},
+ {id:'lb76',name:'Mansión Exclusiva',type:'Residential',size:300,produce:'5 Residentes',desc:'Residencia de lujo con alta calidad de vida.',price:20000},
+ {id:'lb77',name:'Centro de Robótica',type:'Factory',size:400,produce:'5 Robots',desc:'Investiga y produce robots avanzados.',price:18000},
+ {id:'lb78',name:'Bolsa de Valores',type:'Commercial',size:380,produce:'1500 Beneficio',desc:'El corazón financiero de tu imperio.',price:25000},
+ {id:'lb79',name:'Centro de Control Aéreo',type:'Service',size:200,produce:'25 Seguridad',desc:'Gestiona el tráfico aéreo de tu aeropuerto.',price:6000},
+ {id:'lb80',name:'Jardines Colgantes',type:'Amenity',size:300,produce:'20 Felicidad',desc:'Belleza natural y atracción turística.',price:7500},
+ {id:'lb81',name:'Planta Geotérmica',type:'Utility',size:280,produce:'250 Energía',desc:'Genera energía a partir del calor de la Tierra.',price:9000},
+ {id:'lb82',name:'Puente Emblemático',type:'Transport',size:500,produce:'30 Transporte',desc:'Una maravilla arquitectónica que facilita el tráfico y atrae visitantes.',price:10000},
+ {id:'lb83',name:'Parcela Ecológica',type:'Land',size:180,produce:'5 Medio Ambiente',desc:'Terreno protegido para construcciones sostenibles.',price:3000},
+ {id:'lb84',name:'Eco-Viviendas',type:'Residential',size:220,produce:'20 Residentes',desc:'Viviendas con bajo impacto ambiental.',price:5500},
+ {id:'lb85',name:'Granja Solar Flotante',type:'Factory',size:600,produce:'400 Energía',desc:'Innovadora fuente de energía renovable en el agua.',price:13000},
+ {id:'lb86',name:'Distrito de Entretenimiento',type:'Commercial',size:450,produce:'800 Beneficio',desc:'Zona vibrante con ocio y tiendas para atraer a multitudes.',price:10000},
+ {id:'lb87',name:'Sistema de Drones de Vigilancia',type:'Service',size:50,produce:'30 Seguridad',desc:'Tecnología avanzada para la seguridad de la ciudad.',price:7000},
+ {id:'lb88',name:'Acuario Gigante',type:'Amenity',size:500,produce:'180 Turismo',desc:'Una impresionante exhibición de vida marina.',price:12000},
+ {id:'lb89',name:'Planta de Fusión Nuclear',type:'Utility',size:700,produce:'1000 Energía',desc:'La fuente de energía más avanzada y poderosa.',price:30000},
+ {id:'lb90',name:'Lanzadera Espacial',type:'Transport',size:800,produce:'500 Turismo',desc:'Conecta tu ciudad con el espacio y el turismo interplanetario.',price:50000}
+];
+const landById=Object.fromEntries(LAND_BUILDINGS.map(b=>[b.id,b]));
+const fmtEuroInt=n=>'€'+Math.round(n).toLocaleString('es-ES');
+
+/* ================= NODOS LIBRES (30 nodos) ================= */
+const NODOS_LIBRES = (function(){
+  const baseNodes = [
+    { id:'node01', name:'Parcela Ruzafa', type:'Residential', lat:39.4611, lng:-0.3757, price:12000, rent:120 },
+    { id:'node02', name:'Suelo El Carmen', type:'Commercial', lat:39.4772, lng:-0.3789, price:18000, rent:200 },
+    { id:'node03', name:'Terreno Benimaclet', type:'Residential', lat:39.4838, lng:-0.3644, price:15000, rent:160 },
+    { id:'node04', name:'Lote Malvarrosa', type:'Commercial', lat:39.4720, lng:-0.3280, price:14000, rent:140 },
+    { id:'node05', name:'Zona Campanar', type:'Residential', lat:39.4775, lng:-0.3956, price:16000, rent:170 },
+    { id:'node06', name:'Área Patraix', type:'Land', lat:39.4568, lng:-0.3812, price:8000, rent:80 },
+    { id:'node07', name:'Espacio Jesús', type:'Land', lat:39.4705, lng:-0.3860, price:7500, rent:75 },
+    { id:'node08', name:'Parcela La Torre', type:'Land', lat:39.4740, lng:-0.3580, price:9000, rent:90 },
+    { id:'node09', name:'Suelo Cabanyal', type:'Residential', lat:39.4632, lng:-0.3318, price:13000, rent:130 },
+    { id:'node10', name:'Terreno Viveros', type:'Amenity', lat:39.4805, lng:-0.3677, price:18000, rent:180 },
+    { id:'node11', name:'Lote Colón', type:'Commercial', lat:39.4691, lng:-0.3736, price:22000, rent:230 },
+    { id:'node12', name:'Huerta de Benimàmet', type:'Farm', lat:39.5030, lng:-0.4170, price:10000, rent:100 },
+    { id:'node13', name:'Parcela Aragón', type:'Residential', lat:39.4720, lng:-0.3610, price:14000, rent:140 },
+    { id:'node14', name:'Área Turia', type:'Amenity', lat:39.4705, lng:-0.3860, price:15000, rent:150 },
+    { id:'node15', name:'Polígono Mislata', type:'Factory', lat:39.4746, lng:-0.4170, price:28000, rent:300 },
+    { id:'node16', name:'Terreno Quart', type:'Land', lat:39.4790, lng:-0.4430, price:7000, rent:70 },
+    { id:'node17', name:'Lote Alboraia', type:'Residential', lat:39.4736, lng:-0.3788, price:12000, rent:120 },
+    { id:'node18', name:'Zona Burjassot', type:'Residential', lat:39.4780, lng:-0.4000, price:13000, rent:130 },
+    { id:'node19', name:'Parcela Paterna', type:'Farm', lat:39.5030, lng:-0.4400, price:11000, rent:110 },
+    { id:'node20', name:'Polígono Manises', type:'Factory', lat:39.4910, lng:-0.4560, price:30000, rent:320 },
+    { id:'node21', name:'Terreno Mestalla', type:'Amenity', lat:39.4740, lng:-0.3580, price:16000, rent:160 },
+    { id:'node22', name:'Lote Beniferri', type:'Residential', lat:39.4775, lng:-0.3956, price:14000, rent:140 },
+    { id:'node23', name:'Zona Campanar II', type:'Commercial', lat:39.4772, lng:-0.3789, price:16000, rent:160 },
+    { id:'node24', name:'Parcela Ciutat Vella', type:'Land', lat:39.4699, lng:-0.3763, price:11000, rent:110 },
+    { id:'node25', name:'Suelo Russafa', type:'Residential', lat:39.4618, lng:-0.3740, price:13000, rent:130 },
+    { id:'node26', name:'Terreno El Pla', type:'Residential', lat:39.4705, lng:-0.3860, price:12000, rent:120 },
+    { id:'node27', name:'Lote La Saïdia', type:'Residential', lat:39.4838, lng:-0.3644, price:13000, rent:130 },
+    { id:'node28', name:'Zona Marxalenes', type:'Land', lat:39.4772, lng:-0.3789, price:8000, rent:80 },
+    { id:'node29', name:'Huerta de Paterna', type:'Farm', lat:39.5030, lng:-0.4170, price:10500, rent:105 },
+    { id:'node30', name:'Suelo Vara de Quart', type:'Land', lat:39.4772, lng:-0.3789, price:9000, rent:90 }
+  ];
+  return baseNodes;
+})();
+
+const NODE_ICONS = {
+  Land: '🟩', Residential: '🏘️', Farm: '🌾', Factory: '🏭', Commercial: '🏬',
+  Amenity: '🎡', Service: '🏛️', Utility: '⚙️', Transport: '🚉'
+};
+
+/* ================= DISTRITOS Y TERRENOS ESTRATÉGICOS ================= */
+const DISTRICTS=[
+ {id:'ciutatvella',name:'Ciutat Vella',bonus:'+25% clientes',nodes:['node02','node10','node24','node28']},
+ {id:'ruzaffa',name:'Ruzafa',bonus:'-15% impuestos',nodes:['node01','node25','node06']},
+ {id:'benimaclet',name:'Benimaclet',bonus:'+20% velocidad reposición',nodes:['node03','node08','node13','node27']},
+ {id:'malvarrosa',name:'Malvarrosa',bonus:'+30% ingresos de furgoneta',nodes:['node04','node09']},
+ {id:'campanar',name:'Campanar',bonus:'-10% coste de mejoras',nodes:['node05','node18','node22']},
+ {id:'patraix',name:'Patraix',bonus:'+15% clientes estables',nodes:['node06','node23']},
+ {id:'cabanyal',name:'Cabanyal',bonus:'+20% de pedidos de vecinos',nodes:['node09','node04']},
+ {id:'viveros',name:'Viveros',bonus:'+5 reputación por día',nodes:['node10','node21']},
+ {id:'colon',name:'Colón',bonus:'+10% ventas en productos de lujo',nodes:['node11']},
+ {id:'benimamet',name:'Benimàmet',bonus:'+50% producción de granjas',nodes:['node12','node19','node29']},
+ {id:'mislata',name:'Mislata',bonus:'+40% producción de fábricas',nodes:['node15','node20']},
+ {id:'alboraia',name:'Alboraia',bonus:'+10% capacidad de almacén',nodes:['node17']},
+ {id:'burjassot',name:'Burjassot',bonus:'+15% eficiencia de investigación',nodes:['node18']},
+ {id:'paterna',name:'Paterna',bonus:'+20% producción agrícola',nodes:['node19','node29']},
+ {id:'manises',name:'Manises',bonus:'+30% producción de fábricas',nodes:['node20']},
+ {id:'mestalla',name:'Mestalla',bonus:'+15% clientes en eventos',nodes:['node21']},
+ {id:'beniferri',name:'Beniferri',bonus:'+10% valor de venta de edificios',nodes:['node22']},
+ {id:'la_saidia',name:'La Saïdia',bonus:'+10% energía diaria',nodes:['node27']},
+ {id:'marxalenes',name:'Marxalenes',bonus:'-5% coste de construcción',nodes:['node28']}
+];
+const DISTRICT_NAMES=Object.fromEntries(DISTRICTS.map(d=>[d.id,d.name]));
+
+function getDistrictOfNode(nodeId){
+ for(const d of DISTRICTS)if(d.nodes.includes(nodeId))return d.id;
+ return null;
+}
+
+function updateDistrictControl(){
+ for(const d of DISTRICTS){
+   const ownedNodes = d.nodes.filter(nid => S.ownedNodes && S.ownedNodes[nid]);
+   const total = d.nodes.length;
+   const majority = Math.floor(total/2)+1;
+   if(ownedNodes.length >= majority){
+     S.districts[d.id] = S.districts[d.id] || {};
+     S.districts[d.id].owner = 'local';
+     S.districts[d.id].control = true;
+     S.districtBonuses[d.id] = true;
+   } else {
+     if(S.districts[d.id]) S.districts[d.id].control = false;
+     S.districtBonuses[d.id] = false;
+   }
+ }
+}
+
+function getDistrictBonusForNode(nodeId){
+ const d = getDistrictOfNode(nodeId);
+ if(!d) return {};
+ if(S.districtBonuses && S.districtBonuses[d]){
+   const bonusMap = {
+     'ciutatvella': {clientes: 0.25},
+     'ruzaffa': {impuestos: -0.15},
+     'benimaclet': {reposicion: 0.20},
+     'malvarrosa': {furgoneta: 0.30},
+     'campanar': {mejoras: -0.10},
+     'patraix': {clientes: 0.15},
+     'cabanyal': {pedidos: 0.20},
+     'viveros': {reputacion: 5},
+     'colon': {lujo: 0.10},
+     'benimamet': {granja: 0.50},
+     'mislata': {fabrica: 0.40},
+     'alboraia': {capacidad: 0.10},
+     'burjassot': {investigacion: 0.15},
+     'paterna': {agricola: 0.20},
+     'manises': {fabrica: 0.30},
+     'mestalla': {eventos: 0.15},
+     'beniferri': {venta: 0.10},
+     'la_saidia': {energia: 0.10},
+     'marxalenes': {construccion: -0.05}
+   };
+   return bonusMap[d] || {};
+ }
+ return {};
+}
+
+/* ============ SUBASTAS ============ */
+function generateAuctions(){
+ if(S.day % 3 === 0 && S.day > 0){
+   const highValueNodes = NODOS_LIBRES.filter(n => 
+     (n.lat > 39.465 && n.lat < 39.475 && n.lng > -0.38 && n.lng < -0.37) ||
+     (n.name.includes('Estación') || n.name.includes('Colón'))
+   );
+   if(highValueNodes.length === 0) return;
+   const node = rnd(highValueNodes);
+   const basePrice = Math.round(node.price * (1.5 + Math.random()*0.5));
+   S.auctions.push({
+     id: 'auc'+Date.now()+Math.random().toString(36).substr(2,4),
+     nodeId: node.id,
+     basePrice: basePrice,
+     currentBid: basePrice,
+     currentBidder: null,
+     expiresDay: S.day + 1,
+     state: 'active'
+   });
+   toast('🔔 Subasta de terreno: '+node.name+' (precio base '+fmt$(basePrice)+')');
+ }
+}
+
+function renderAuctions(){
+ if(!S.auctions.length) return '<p style="font-size:.86rem;color:#8a7f68">No hay subastas activas.</p>';
+ return S.auctions.filter(a=>a.state==='active').map(a=>{
+   const node = NODOS_LIBRES.find(n=>n.id===a.nodeId);
+   if(!node) return '';
+   const canBid = S.wallet > a.currentBid;
+   return `<div class="orow"><span><b>${node.name}</b> · Base: ${fmt$(a.basePrice)} · Puja actual: ${fmt$(a.currentBid)}${a.currentBidder?' por '+a.currentBidder:''}</span>
+   <button class="btn grn" data-auction-bid="${a.id}" ${canBid?'':'disabled'}>Pujar +5% (${fmt$(Math.round(a.currentBid*1.05))})</button></div>`;
+ }).join('');
+}
+
+function bidAuction(id){
+ const a = S.auctions.find(x=>x.id===id);
+ if(!a || a.state!=='active' || a.expiresDay < S.day) {a.state='closed';return;}
+ const bid = Math.round(a.currentBid * 1.05);
+ if(S.wallet < bid){toast('💼 No tienes suficiente cartera.');return;}
+ S.wallet -= bid;
+ a.currentBid = bid;
+ a.currentBidder = S.pname;
+ toast('💰 Has pujado '+fmt$(bid)+' por el terreno.');
+ save();
+}
+
+function resolveAuctions(){
+ for(const a of S.auctions){
+   if(a.state==='active' && a.expiresDay <= S.day){
+     if(a.currentBidder){
+       const node = NODOS_LIBRES.find(n=>n.id===a.nodeId);
+       if(node){
+         S.ownedNodes[node.id] = true;
+         S.wallet -= a.currentBid;
+         feed(`🏆 Subasta ganada: ${node.name} por ${fmt$(a.currentBid)}`,'good');
+         toast('🎉 Has ganado la subasta de '+node.name);
+       }
+     }
+     a.state = 'closed';
+   }
+ }
+}
+
+/* ============ LONJA ============ */
+function renderLonja(){
+ let html = `<div class="sect"><h4>🏛️ Lonja de Comercio</h4>
+ <p style="font-size:.85rem">Publica lotes de productos que tengas en stock o compra de otros comerciantes.</p>
+ <div id="lonjaOffers">`;
+ const offers = S.offers.filter(o => o.type === 'lonja');
+ if(offers.length){
+   offers.forEach(o=>{
+     const p=byId[o.pid];
+     html += `<div class="orow"><span>${o.emoji} <b>${o.name}</b> vende ${o.qty}× ${p.emoji} ${p.name} · ${fmt$(o.price)}</span>
+     <button class="btn grn" data-buy-lonja="${o.id}" ${S.cash>=o.price?'':'disabled'}>Comprar lote</button></div>`;
+   });
+ } else html += '<p style="font-size:.85rem;color:#8a7f68">No hay lotes publicados en la lonja.</p>';
+ html += `</div>
+ <div class="rowflex" style="margin-top:6px">
+   <select id="lonjaProd">${Object.keys(S.stock).filter(k=>S.stock[k]>0).map(k=>`<option value="${k}">${byId[k].emoji} ${byId[k].name} (${S.stock[k]})</option>`).join('')}</select>
+   <input id="lonjaQty" type="number" min="1" value="10" style="width:70px">
+   <input id="lonjaPrice" type="number" min="1" value="20" style="width:80px">
+   <button class="btn grn" data-pub-lonja>Publicar lote en lonja</button>
+ </div></div>`;
+ return html;
+}
+
+function publishLonja(){
+ const sel=document.getElementById('lonjaProd');
+ if(!sel||!sel.value) return;
+ const pid=+sel.value;
+ const qty=Math.min(+document.getElementById('lonjaQty').value||10, S.stock[pid]||0);
+ const price=+document.getElementById('lonjaPrice').value||10;
+ if(qty<1||price<1) return;
+ S.stock[pid]-=qty; dirty.add(pid); if(S.stock[pid]<=0) delete S.stock[pid];
+ S.offers.push({
+   id:'lonja'+Date.now()+Math.random().toString(36).substr(2,4),
+   type:'lonja',
+   name:S.pname,
+   emoji:'🏪',
+   pid,
+   qty,
+   price
+ });
+ toast('📢 Lote publicado en la Lonja.');
+ renderPlazaPanel(); updateHUD(); updateDynamic(); save();
+}
+
+function buyLonja(id){
+ const o = S.offers.find(x=>x.id===id);
+ if(!o || o.type!=='lonja') return;
+ if(S.cash<o.price){toast('🏪 La caja no llega.');return;}
+ if(o.qty>cap()-totalStock()){toast('📦 Almacén lleno.');return;}
+ S.cash-=o.price; addStock(o.pid,o.qty);
+ S.offers = S.offers.filter(x=>x.id!==id);
+ feed(`🤝 Lote comprado en lonja: ${o.qty}× ${byId[o.pid].name}`,'good');
+ if(FB.db && o.fbId) FB.db.collection('rooms').doc(S.room).collection('offers').doc(o.fbId).delete().catch(()=>{});
+ renderPlazaPanel(); updateHUD(); updateDynamic(); save();
+}
+
+/* ============ CONTRATOS DE SUMINISTRO ============ */
+function renderSupplyContracts(){
+ if(!S.supplyContracts.length) return '<p style="font-size:.85rem;color:#8a7f68">No hay contratos activos.</p>';
+ return S.supplyContracts.filter(c=>c.active).map(c=>{
+   const p=byId[c.pid];
+   return `<div class="orow"><span>${p.emoji} ${p.name} · ${c.from} → ${c.to} · ${c.qty} uds · ${fmt$(c.pricePerUnit)}/ud · restan ${c.daysLeft} días</span>
+   <button class="btn red" data-cancel-contract="${c.id}">Cancelar</button></div>`;
+ }).join('');
+}
+
+function createSupplyContract(pid, qty, pricePerUnit, days, target){
+ const contract = {
+   id:'sc'+Date.now()+Math.random().toString(36).substr(2,4),
+   from: S.pname,
+   to: target || 'CPU',
+   pid, qty, pricePerUnit,
+   totalPrice: qty * pricePerUnit,
+   daysLeft: days || 5,
+   active: true
+ };
+ S.supplyContracts.push(contract);
+ feed(`📄 Contrato de suministro: ${qty}× ${byId[pid].name} a ${fmt$(pricePerUnit)}/ud durante ${days} días.`,'good');
+ save();
+}
+
+/* ============ PACTOS DE PRECIOS ============ */
+function createPriceCartel(district, minPrices){
+ const cartel = {
+   id:'pc'+Date.now()+Math.random().toString(36).substr(2,4),
+   district,
+   members: [S.pname],
+   minPrices,
+   startDay: S.day,
+   active: true
+ };
+ S.priceCartels.push(cartel);
+ toast('🤝 Se ha formado un cartel de precios en '+DISTRICT_NAMES[district]);
+ save();
+}
+
+function checkPriceCartels(){
+ for(const c of S.priceCartels){
+   if(!c.active) continue;
+   for(const member of c.members){
+     if(member === S.pname){
+       for(const cat in c.minPrices){
+         const min = c.minPrices[cat];
+         const products = PRODUCTS.filter(p=>p.cat===cat);
+         for(const p of products){
+           const current = priceOf(p.id);
+           if(current < min){
+             triggerPriceWar(c.id, member);
+             return;
+           }
+         }
+       }
+     }
+   }
+ }
+}
+
+function triggerPriceWar(cartelId, traitor){
+ const c = S.priceCartels.find(x=>x.id===cartelId);
+ if(!c) return;
+ c.active = false;
+ feed(`⚔️ Guerra de precios en ${DISTRICT_NAMES[c.district]}! ${traitor} ha roto el pacto.`,'bad');
+ S.mood = Math.max(0, S.mood-15);
+ toast('💥 Guerra de precios: tus clientes caen temporalmente.');
+ save();
+}
+
+/* ============ EVENTOS GLOBALES ============ */
+function generateGlobalEvent(){
+ if(S.day % 7 === 0 && S.day > 0 && !S.globalEvents.some(e=>e.active)){
+   const events = [
+     {id:'feria', name:'Feria Gastronómica', desc:'Recolecta 10.000 Naranjas y Arroz para la gran fiesta.', goal:10000, category:'agricola', rewards:{clientes:0.5, ingreso:0.5}},
+     {id:'crisis', name:'Crisis de Suministro', desc:'Falta de Agua y Pan: produce 5.000 litros y 3.000 barras.', goal:5000, category:'basicos', rewards:{rep:2}},
+     {id:'festival', name:'Festival de Música', desc:'Atrae turistas: vende 8.000 bebidas y snacks.', goal:8000, category:'ocio', rewards:{clientes:0.3, ingreso:0.3}}
+   ];
+   const ev = rnd(events);
+   S.globalEvents.push({
+     ...ev,
+     progress: 0,
+     active: true,
+     startDay: S.day,
+     total: ev.goal
+   });
+   toast('🌍 Evento global: '+ev.name);
+ }
+}
+
+function updateGlobalEventProgress(amount, category){
+ for(const e of S.globalEvents){
+   if(e.active && e.category === category){
+     e.progress += amount;
+     if(e.progress >= e.total){
+       e.active = false;
+       applyGlobalEventReward(e);
+     }
+   }
+ }
+}
+
+function applyGlobalEventReward(e){
+ toast('🎉 ¡Evento completado! Bonificación: '+JSON.stringify(e.rewards));
+ S.rep = Math.min(5, S.rep+(e.rewards.rep||0));
+ if(e.rewards.clientes) S.event = {cust: 1+e.rewards.clientes};
+ if(e.rewards.ingreso) S.event = {price: 1+e.rewards.ingreso};
+ S.dayBonus = {clientes: e.rewards.clientes||0, ingreso: e.rewards.ingreso||0, expires: S.day+2};
+}
+
+/* ============ BOICOTS ============ */
+function startBoycott(targetPlayer, district, days){
+ S.boycotts.push({
+   id:'bc'+Date.now()+Math.random().toString(36).substr(2,4),
+   targetPlayer,
+   district,
+   daysLeft: days || 3,
+   active: true
+ });
+ toast(`🚫 Boicot contra ${targetPlayer} en ${DISTRICT_NAMES[district]}.`);
+ save();
+}
+
+function applyBoycotts(){
+ for(const b of S.boycotts){
+   if(!b.active) continue;
+   if(b.targetPlayer === S.pname){
+     const nodes = DISTRICTS.find(d=>d.id===b.district)?.nodes || [];
+     for(const nid of nodes){
+       if(S.nodes[nid] && S.nodes[nid].buildingId){
+         S.mood = Math.max(0, S.mood-2);
+       }
+     }
+   }
+   b.daysLeft--;
+   if(b.daysLeft <= 0) b.active = false;
+ }
+}
+
+/* ================= FAMILIAS DE ESTABLECIMIENTOS ================= */
+const FAMILY_ORDER=['Alimentación y mercados','Restauración y ocio','Comercio especializado','Servicios y movilidad'];
+function familyOf(e){const t=e.type; if(['Despensa','Carnicería','Lácteos','Panadería','Frutería','Pescadería','Mercado','Congelados'].includes(t))return 'Alimentación y mercados'; if(['Ocio y chismes','Restaurante','Café','Bebidas','Dulces'].includes(t))return 'Restauración y ocio'; if(['Comercio local','Kiosco','Gourmet','Mascotas','Bebés'].includes(t))return 'Comercio especializado'; return 'Servicios y movilidad';}
+function renderOrigins(){const box=$('originList');if(!box)return;const selected=S.backgroundChoice||'lottery';box.innerHTML=Object.values(ORIGINS).map(o=>`<button type="button" class="origin-card${selected===o.id?' sel':''}" data-origin="${o.id}"><h3>${o.icon} ${o.name}</h3><p><b>${o.title}</b></p><p class="origin-money">💼 ${fmt$(o.wallet)} · 🏪 ${fmt$(o.cash)}</p><p class="origin-challenge">Reto: ${o.id==='lottery'?'Impuestos, inspecciones y competencia agresiva.':o.id==='worker'?'Gastos diarios, préstamo y turnos obligatorios.':'Supervivencia diaria y energía limitada.'}</p></button>`).join('');const o=ORIGINS[selected];$('introTitle').textContent='Mi ciudad';$('introText').textContent=`Tu origen define el capital de partida, el nivel de energía, los gastos y las obligaciones. Después comprarás establecimientos, operarás el supermercado y competirás en el Mercado broker. ${o.desc}`;$('originDetail').innerHTML=`<b>${o.icon} ${o.title}</b><span class="origin-badge">Seleccionado</span><br>${o.desc}`;}
+$('originList').addEventListener('click',e=>{const b=e.target.closest('[data-origin]');if(!b)return;S.backgroundChoice=b.dataset.origin;renderOrigins();renderStartEstablishments();});
+function applyOrigin(id){const o=ORIGINS[id]||ORIGINS.lottery;S.background=o.id;S.loanBalance=o.loan;S.energyMax=o.energyMax;S.energy=Math.min(S.energyMax,S.energy);S.wallet=o.wallet;S.cash=o.cash;S.rep=o.rep;S.requiredShifts=o.requiredShifts;S.originTax=o.tax;}
+function renderStartEstablishments(){const box=$('startEstablishments');if(!box)return;const picked=S.startProperties||[];const originBudget=(ORIGINS[S.backgroundChoice||'lottery']||ORIGINS.lottery).wallet;const spent=picked.reduce((n,id)=>n+(START_ESTABLISHMENTS.find(x=>x.id===id)?.cost||0),0); $('startSpent').textContent=fmt$(spent);$('startBudget').textContent=fmt$(originBudget-spent);const groups={};START_ESTABLISHMENTS.forEach(e=>(groups[familyOf(e)]??=[]).push(e));box.innerHTML=FAMILY_ORDER.filter(f=>groups[f]?.length).map(f=>{const selected=groups[f].filter(e=>picked.includes(e.id)).length;return `<section class="family-group"><button type="button" class="family-block" data-family="${f}"><span><strong>${f}</strong><small>${groups[f].length} establecimientos · ${selected} seleccionado${selected===1?'':'s'}</small></span><span class="family-arrow">›</span></button></section>`;}).join('');}
+function renderFamilyResults(family){const list=START_ESTABLISHMENTS.filter(e=>familyOf(e)===family);const picked=S.startProperties||[];const originBudget=(ORIGINS[S.backgroundChoice||'lottery']||ORIGINS.lottery).wallet;const spent=picked.reduce((n,id)=>n+(START_ESTABLISHMENTS.find(x=>x.id===id)?.cost||0),0);$('familyResults').innerHTML=`<button class="btn ghost" data-family-close>← Volver a familias</button><h2 style="margin-top:8px">${family}</h2><p class="origin-detail">Selecciona hasta tres establecimientos. Elegidos: <b>${picked.length}/3</b> · Disponible: <b>${fmt$(originBudget-spent)}</b></p><div class="family-items">${list.map(e=>{const on=picked.includes(e.id),disabled=!on&&(picked.length>=3||spent+e.cost>originBudget);return `<button type="button" class="start-est${on?' sel':''}" data-family-est="${e.id}" ${disabled?'disabled':''}><span class="eemoji">${e.emoji}</span><span><span class="ename">${e.name}</span><span class="emeta">${e.type} · ${fmt$(e.cost)}</span></span><span class="echeck">${on?'✅':''}</span></button>`;}).join('')}</div>`;$('modal-family-results').classList.add('open');}
+$('startEstablishments').addEventListener('click',e=>{const b=e.target.closest('[data-family]');if(b)renderFamilyResults(b.dataset.family);});
+$('familyResults').addEventListener('click',e=>{if(e.target.closest('[data-family-close]')){$('modal-family-results').classList.remove('open');return;}const b=e.target.closest('[data-family-est]');if(!b)return;const id=b.dataset.familyEst,a=S.startProperties||[];if(a.includes(id))S.startProperties=a.filter(x=>x!==id);else if(a.length<3){const item=START_ESTABLISHMENTS.find(x=>x.id===id);const spent=a.reduce((n,x)=>n+(START_ESTABLISHMENTS.find(y=>y.id===x)?.cost||0),0);if(item&&spent+item.cost<=(ORIGINS[S.backgroundChoice||'lottery']||ORIGINS.lottery).wallet)a.push(id);else return;}S.startProperties=a;renderFamilyResults(familyOf(START_ESTABLISHMENTS.find(x=>x.id===id)));renderStartEstablishments();});
+
+const FACTS=[
+ {name:'Puesto de Conservas · Mercado Central',cat:'N',emoji:'🥫',costs:[120000,260000,480000],lat:39.4746,lng:-0.3785,sub:'proveedor'},
+ {name:'Charcutería · Mercado Central',cat:'C',emoji:'🥓',costs:[120000,260000,480000],lat:39.4743,lng:-0.3790,sub:'proveedor'},
+ {name:'Lechería y Quesos · Mercado Central',cat:'L',emoji:'🧀',costs:[120000,260000,480000],lat:39.4741,lng:-0.3782,sub:'proveedor'},
+ {name:'Concesionario Toyota Valencia',emoji:'🚗',noContract:true,lat:39.4620,lng:-0.3941,sub:'trabajo por horas'},
+ {name:"Ciudad Administrativa 9 d'Octubre",emoji:'🏢',noContract:true,lat:39.4547,lng:-0.3599,sub:'trabajo por horas'}];
+const HOUSEPOS=[
+ {barrio:'Ruzafa',lat:39.4611,lng:-0.3757},{barrio:'El Carmen',lat:39.4772,lng:-0.3789},
+ {barrio:'Benimaclet',lat:39.4838,lng:-0.3644},{barrio:'Malvarrosa',lat:39.4720,lng:-0.3280},
+ {barrio:'Campanar',lat:39.4780,lng:-0.4000}];
+const SUPER_LOC={name:'Mercado de Colón',lat:39.4690,lng:-0.3684};
+const BAR_LOC={name:'Horchatería Santa Catalina',lat:39.47388,lng:-0.37606};
+const REST_LOC={name:'Casa Carmela',lat:39.4762,lng:-0.3236};
+const GAS_LOC={name:'Gasolinera Repsol · Av. Primado Reig',lat:39.4790,lng:-0.3610};
+const PLAZA_LOC={name:'Plaza del Ayuntamiento',lat:39.4699,lng:-0.3763};
+let houseEls=[],superLbl=null,houseOcc=[],leafMap=null,nodeMarkers=[];
+
+function pinIcon(html,className,glyph){return L.divIcon({className:'mapPinWrap',html:`<div class="mapPin ${className||''}"><div class="lbl">${html}</div><div class="pinShape"><span class="pinGlyph">${glyph||'📍'}</span></div></div>`,iconSize:[0,0],iconAnchor:[0,0]});}
+function addPin(loc,html,className,onclick,glyph){
+ const m=L.marker([loc.lat,loc.lng],{icon:pinIcon(html,className,glyph)}).addTo(leafMap);
+ if(onclick)m.on('click',onclick);
+ const el=m.getElement();
+ if(el&&onclick){el.addEventListener('mouseenter',()=>el.querySelector('.mapPin').classList.add('hover'));
+  el.addEventListener('mouseleave',()=>el.querySelector('.mapPin').classList.remove('hover'));}
+ return m;}
+
+// === COMUNIDADES ===
+const COMUNIDADES = {
+  'valencia': { name: 'Comunidad Valenciana', center: [39.5, -0.5], zoom: 9 },
+  'madrid': { name: 'Comunidad de Madrid', center: [40.4168, -3.7038], zoom: 10 },
+  'andalucia': { name: 'Comunidad de Andalucía', center: [37.38, -5.99], zoom: 9 },
+  'catalunya': { name: 'Catalunya', center: [41.3851, 2.1734], zoom: 9 }
+};
+var ComunidadesControl = L.Control.extend({
+  options: { position: 'topleft' },
+  onAdd: function(map) {
+    var container = L.DomUtil.create('div', 'comunidades-control');
+    var btn = L.DomUtil.create('button', 'btn-comunidades', container);
+    btn.textContent = '🌍';
+    btn.title = 'Comunidades';
+    var menu = L.DomUtil.create('div', 'comunidades-menu', container);
+    var ul = L.DomUtil.create('ul', '', menu);
+    for (var key in COMUNIDADES) {
+      var li = L.DomUtil.create('li', '', ul);
+      li.textContent = COMUNIDADES[key].name;
+      li.dataset.key = key;
+      L.DomEvent.on(li, 'click', function(e) {
+        var key = this.dataset.key;
+        var com = COMUNIDADES[key];
+        map.setView(com.center, com.zoom);
+        menu.classList.remove('open');
+      });
+    }
+    L.DomEvent.on(btn, 'click', function(e) {
+      e.stopPropagation();
+      menu.classList.toggle('open');
+    });
+    L.DomEvent.on(document, 'click', function(e) {
+      if (!container.contains(e.target)) {
+        menu.classList.remove('open');
+      }
+    });
+    return container;
+  }
+});
+
+function buildMap(){
+ if(leafMap){leafMap.remove();leafMap=null;}
+ leafMap = L.map('leafletMap', {zoomControl: true, attributionControl: true, minZoom: 5, maxZoom: 18})
+  .setView([39.4699,-0.3763], 13.6);
+ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  maxZoom:19, attribution:'&copy; OpenStreetMap'}).addTo(leafMap);
+ leafMap.addControl(new ComunidadesControl());
+
+ addPin(PLAZA_LOC,`⛲ <b>Plaza del Ayuntamiento</b><span class="st" id="plazaBadge">💬 · 📦0</span>`,'plazaPin',()=>openPlaza(),'⛲');
+ addPin(SUPER_LOC,`🏪 <b>MERCADO DE COLÓN</b><span class="st" id="superLbl">caja…</span>`,'superPin',()=>showView('super'),'🏪');
+ superLbl=()=>{const e=document.getElementById('superLbl');if(e)e.textContent=`${fmt$(S.cash)} · nv.${S.level}`;};
+
+ const owned=id=>(S.properties||[]).includes(id);
+ const mapEst=(e,kind)=>{const own=owned(e.id);const icon=own?'✅':`<span class="laborIcon">${e.emoji}</span>`;
+  addPin(e,`${icon} <b>${e.name}</b><span class="st">${own?'TU ESTABLECIMIENTO · '+e.type:e.type+' · Comprar '+fmt$(e.cost)}</span>`,own?'ownedPin':'availablePin',()=>openPanel('est',e),own?'✅':e.emoji);};
+ mapEst({...START_ESTABLISHMENTS.find(x=>x.id==='est01'),...BAR_LOC},'bar');
+ mapEst({...START_ESTABLISHMENTS.find(x=>x.id==='est02'),...REST_LOC},'rest');
+ mapEst({...START_ESTABLISHMENTS.find(x=>x.id==='est03'),...GAS_LOC},'gas');
+ START_ESTABLISHMENTS.filter(e=>!['est01','est02','est03'].includes(e.id)).forEach(e=>mapEst(e,'est'));
+ FACTS.forEach((f,i)=>{addPin(f,`<span class="laborIcon">${f.emoji}</span> <b>${f.name}</b><span class="st">${f.cat?CATNAME[f.cat]:f.sub}</span>`,'availablePin',()=>openPanel('fact',i),f.emoji);});
+
+ houseEls=[];
+ HOUSEPOS.forEach((p,i)=>{const m=addPin(p,`<span id="houseLbl${i}">🏠</span>`,'housePin',()=>clickHouse(i),'🏠');
+  houseEls.push({m,barrio:p.barrio});});
+ renderHouses();
+ drawNodes();
+}
+function drawNodes(){
+ nodeMarkers.forEach(m=>leafMap.removeLayer(m));
+ nodeMarkers=[];
+ NODOS_LIBRES.forEach(node=>{
+   const owned = S.ownedNodes && S.ownedNodes[node.id];
+   const rented = S.rentedNodes && S.rentedNodes[node.id];
+   const occupied = S.nodes && S.nodes[node.id] && S.nodes[node.id].buildingId;
+   const cls = occupied ? 'occupied' : (owned ? 'owned' : (rented ? 'rented' : 'free'));
+   const icon = L.divIcon({
+     className: 'node-marker '+cls,
+     html: `<span class="node-type">${NODE_ICONS[node.type]||'📌'}</span>`,
+     iconSize: [26,26],
+     iconAnchor: [13,13]
+   });
+   const m = L.marker([node.lat, node.lng], {icon}).addTo(leafMap);
+   m.on('click', ()=>openPanel('node', node.id));
+   const popupContent = `<b>${node.name}</b><br>Tipo: ${translateType(node.type)}<br>${owned?'✅ Propio':rented?'🟡 Alquilado':'🟢 Libre'}<br>${occupied?'🏗️ Ocupado por '+landById[S.nodes[node.id].buildingId]?.name:'Vacío'}<br>${!owned&&!rented?'💰 Compra: '+fmt$(node.price)+' · Alquiler: '+fmt$(node.rent)+'/día':''}`;
+   m.bindPopup(popupContent, {closeButton:false, className:'node-popup'});
+   m.on('mouseover', ()=>m.openPopup());
+   m.on('mouseout', ()=>m.closePopup());
+   nodeMarkers.push(m);
+ });
+}
+function renderHouses(){
+ const occ=[{me:true,name:S.pname||'TÚ',emoji:'🏠',color:'#e8b23c'}];
+ if(FB.meet)for(const [uid,p] of Object.entries(FB.meet))occ.push({name:p.name,emoji:p.emoji||'🙂',color:p.color||'#888',online:true,uid,lv:p.level});
+ for(const b of BOTS){if(occ.length>=5)break;occ.push(Object.assign({},b,{online:true,lv:(S.botState[b.id]||{lv:1}).lv,bot:true}));}
+ houseOcc=occ;
+ houseEls.forEach((h,i)=>{const o=occ[i],e=document.getElementById('houseLbl'+i);if(!e)return;
+  if(!o){e.innerHTML='';return;}
+  e.innerHTML=`${o.me?'⭐':'<span class="dot'+(o.online?' on':'')+'"></span>'}${o.emoji} <b>${o.me?'TU CASA':o.name}</b>
+   <span class="st">${h.barrio}${o.me?'':' · nivel '+(o.lv||1)}</span>`;});}
+function clickHouse(i){const o=houseOcc[i];if(!o)return;
+ if(o.me)openPanel('house');
+ else if(o.uid)openPanel('player',o);
+ else openPanel('neighbor',BOTS.find(b=>b.id===o.id)||BOTS[0]);}
+
+/* ================= PANELES ================= */
+let PANEL=null;
+function openPanel(kind,arg){PANEL={kind,arg};renderPanel();$('modal-panel').classList.add('open');}
+$('modal-panel').addEventListener('click',e=>{if(e.target.id==='modal-panel')$('modal-panel').classList.remove('open');});
+function relOf(b){return S.rel[b.id]||0;}
+
+function renderPlazaPanel(){
+ const c=$('pcard');
+ const orders=S.orders.map(o=>{const p=byId[o.pid],have=S.stock[o.pid]||0;
+  return `<div class="orow"><span>${o.emoji} <b>${o.name}</b> pide <b>${o.qty}× ${p.emoji} ${p.name}</b> · paga ${fmt$(p.fair*o.qty*o.premium)} (+${Math.round((o.premium-1)*100)}%)</span>
+  <button class="btn grn" data-act="prep" data-id="${o.id}" ${have>=o.qty?'':'disabled'}>${have>=o.qty?'📦 Preparar':'faltan uds'}</button></div>`;}).join('');
+ const offers=S.offers.filter(o=>o.type!=='lonja').map(o=>{const p=byId[o.pid];
+  return `<div class="orow"><span>${o.emoji} <b>${o.name}</b> vende <b>${o.qty}× ${p.emoji} ${p.name}</b></span>
+  <button class="btn" data-act="buyoffer" data-id="${o.id}" ${S.cash>=o.price?'':'disabled'}>${fmt$(o.price)} (caja)</button></div>`;}).join('');
+ let html = `<h2>⛲ Plaza del Ayuntamiento</h2>
+ <div class="sect"><h4>📦 Pedidos de vecinos para tu súper (${S.orders.length})</h4>
+  ${orders||'<p style="font-size:.9rem">Nadie ha pedido nada todavía. Mejora tu relación en el bar 🍺.</p>'}</div>
+ <div class="sect"><h4>🤝 Ofertas de otros tenderos (${S.offers.filter(o=>o.type!=='lonja').length})</h4>
+  ${offers||'<p style="font-size:.9rem">Sin ofertas ahora mismo.</p>'}
+  ${S.mode==='online'&&FB.db?`<div class="rowflex" style="margin-top:6px">
+   <select id="ofProd">${Object.keys(S.stock).filter(k=>S.stock[k]>0).map(k=>`<option value="${k}">${byId[k].emoji} ${byId[k].name} (${S.stock[k]})</option>`).join('')}</select>
+   <input id="ofQty" type="number" min="1" value="10" style="width:70px">
+   <input id="ofPrice" type="number" min="1" value="20" style="width:80px">
+   <button class="btn grn" data-act="puboffer">Publicar lote</button></div>`:''}</div>
+ <div class="sect"><h4>💬 Chat del barrio</h4><div id="chatbox"></div>
+  <div class="rowflex"><input id="chatIn" placeholder="Escribe algo…" style="flex:1;margin:0"><button class="btn" data-act="sendchat">Enviar</button></div></div>
+ <div style="text-align:right"><button class="btn ghost" data-act="close">Cerrar ✖</button></div>`;
+ // Nuevas secciones
+ html += `<hr style="margin:10px 0;border-color:var(--line)">
+ <div class="sect"><h4>🏛️ Subastas de Terrenos</h4>${renderAuctions()}</div>
+ ${renderLonja()}
+ <div class="sect"><h4>📄 Contratos de Suministro</h4>${renderSupplyContracts()}
+   <div class="rowflex" style="margin-top:6px">
+     <select id="contProd">${Object.keys(S.stock).filter(k=>S.stock[k]>0).map(k=>`<option value="${k}">${byId[k].emoji} ${byId[k].name}</option>`).join('')}</select>
+     <input id="contQty" type="number" min="1" value="20" style="width:62px">
+     <input id="contPrice" type="number" min="1" value="5" style="width:62px" placeholder="Precio/ud">
+     <input id="contDays" type="number" min="1" value="5" style="width:50px">
+     <button class="btn grn" data-create-contract>Crear contrato</button>
+   </div>
+ </div>
+ <div class="sect"><h4>🤝 Pactos de Precios</h4>
+   <p style="font-size:.85rem">Forma un cartel con otros jugadores del mismo distrito (solo online).</p>
+   <div class="rowflex">
+     <select id="cartelDistrict">${DISTRICTS.map(d=>`<option value="${d.id}">${d.name}</option>`).join('')}</select>
+     <input id="cartelMinPrice" placeholder="Precio mínimo (ej: 2.5)" style="width:80px">
+     <button class="btn grn" data-create-cartel>Formar Cartel</button>
+   </div>
+ </div>
+ <div class="sect"><h4>🚫 Boicot Comercial</h4>
+   <p style="font-size:.85rem">Inicia un boicot contra un especulador en un distrito.</p>
+   <div class="rowflex">
+     <input id="boycottTarget" placeholder="Nombre del jugador" style="width:120px">
+     <select id="boycottDistrict">${DISTRICTS.map(d=>`<option value="${d.id}">${d.name}</option>`).join('')}</select>
+     <button class="btn red" data-start-boycott>Boicotear</button>
+   </div>
+ </div>`;
+ c.innerHTML = html;
+ renderChatbox();
+ // Rebind eventos
+ c.querySelector('[data-pub-lonja]')?.addEventListener('click', publishLonja);
+ c.querySelectorAll('[data-buy-lonja]').forEach(b=>b.addEventListener('click', ()=>buyLonja(b.dataset.buyLonja)));
+ c.querySelector('[data-create-contract]')?.addEventListener('click', ()=>{
+   const sel = document.getElementById('contProd');
+   if(!sel.value) return;
+   const pid=+sel.value, qty=+document.getElementById('contQty').value||1;
+   const price=+document.getElementById('contPrice').value||1;
+   const days=+document.getElementById('contDays').value||5;
+   createSupplyContract(pid, qty, price, days);
+   renderPlazaPanel();
+ });
+ c.querySelector('[data-create-cartel]')?.addEventListener('click', ()=>{
+   const district = document.getElementById('cartelDistrict').value;
+   const minPrice = parseFloat(document.getElementById('cartelMinPrice').value);
+   if(!district || isNaN(minPrice)){toast('Elige distrito y precio mínimo');return;}
+   const minPrices = {};
+   for(const cat of Object.keys(CATNAME)){
+     minPrices[cat] = minPrice;
+   }
+   createPriceCartel(district, minPrices);
+   renderPlazaPanel();
+ });
+ c.querySelector('[data-start-boycott]')?.addEventListener('click', ()=>{
+   const target = document.getElementById('boycottTarget').value.trim();
+   const district = document.getElementById('boycottDistrict').value;
+   if(!target){toast('Introduce el nombre del jugador');return;}
+   startBoycott(target, district, 3);
+   renderPlazaPanel();
+ });
+ c.querySelectorAll('[data-auction-bid]').forEach(b=>b.addEventListener('click', ()=>{
+   bidAuction(b.dataset.auctionBid);
+   renderPlazaPanel();
+ }));
+}
+function renderChatbox(){const cb=document.getElementById('chatbox');if(!cb)return;
+ cb.innerHTML=CHAT.map(m=>`<div>${m.emoji} <b>${m.name}:</b> ${m.msg}</div>`).join('');cb.scrollTop=cb.scrollHeight;}
+
+function renderPanel(){const c=$('pcard');let h='';
+ const P=PANEL;
+ if(P.kind==='plaza'){renderPlazaPanel();return;}
+ if(P.kind==='house'){
+  h=`<h2>🏠 Tu casa</h2>
+  <p>💼 Cartera: <b class="num">${fmt$(S.wallet)}</b> · ⚡ Energía: <b>${Math.round(S.energy)}</b>/100 · Gastos diarios: comida ${S.houseUp.cocina?'€55':'€95'} + luz €8.</p>
+  <div class="sect"><h4>😴 Descanso</h4><div class="rowflex">
+   <button class="btn" data-act="siesta" ${S.napped?'disabled':''}>🛏️ Siesta (+30⚡, avanza 1h)</button></div></div>
+  <div class="sect"><h4>💱 Caja ↔ Cartera</h4><div class="rowflex">
+   <button class="btn" data-act="withdraw">🏪→💼 Retirar €9.000</button>
+   <button class="btn ghost" data-act="deposit">💼→ Aportar €9.000</button></div></div>
+  <div class="sect"><h4>🛋️ Mejoras del hogar (paga tu cartera)</h4>
+   <div class="orow"><span>🛋️ Sofá nuevo — +15⚡ al dormir</span><button class="btn" data-act="uph" data-u="sofa" ${S.houseUp.sofa?'disabled':''}>${S.houseUp.sofa?'✅ Comprado':'€1.800'}</button></div>
+   <div class="orow"><span>🍳 Cocina equipada — comida a mitad de precio</span><button class="btn" data-act="uph" data-u="cocina" ${S.houseUp.cocina?'disabled':''}>${S.houseUp.cocina?'✅':'€4.200'}</button></div>
+   <div class="orow"><span>🌷 Jardín — +ánimo cada mañana</span><button class="btn" data-act="uph" data-u="jardin" ${S.houseUp.jardin?'disabled':''}>${S.houseUp.jardin?'✅':'€2.600'}</button></div></div>`;
+ }else if(P.kind==='est'){
+  const e=P.arg,own=(S.properties||[]).includes(e.id),special={est01:'bar',est02:'rest',est03:'gas'}[e.id];
+  h=`<h2>${own?'✅':'🏢'} ${e.name}</h2>
+   <p><b>${e.type}</b> en Valencia. ${own?'Este establecimiento forma parte de tu patrimonio.':'Todavía no es tuyo: puedes adquirirlo con tu cartera.'}</p>
+   <div class="sect"><h4>${own?'🏷️ Gestión del edificio':'💼 Operación inmobiliaria'}</h4>
+    ${own?`<p style="font-size:.88rem">Valor de compra: ${fmt$(e.cost)} · Valor de venta actual: ${fmt$(Math.round(e.cost*.7))}</p>
+     <div class="rowflex"><button class="btn red" data-act="sellEst" data-est="${e.id}">💸 Vender por ${fmt$(Math.round(e.cost*.7))}</button>
+     ${special?`<button class="btn grn" data-act="enterEst" data-kind="${special}">🔧 Gestionar actividad</button>`:''}</div>`:
+     `<p style="font-size:.88rem">Precio de compra: <b>${fmt$(e.cost)}</b>. El edificio mostrará su actividad en el mapa cuando lo compres.</p>
+     <button class="btn grn" data-act="buyEst" data-est="${e.id}" ${S.wallet<e.cost?'disabled':''}>🏷️ Comprar establecimiento · ${fmt$(e.cost)}</button>`}
+   </div>`;
+ }else if(P.kind==='fact'){
+  const f=FACTS[P.arg],lv=f.cat?S.contracts[f.cat]:0,cost=f.cat?f.costs[lv]:0;
+  h=`<h2>${f.emoji} ${f.name}</h2>
+  <p>${f.cat?`Provee <b>${f.emoji} ${CATNAME[f.cat]}</b> a tu supermercado. `:''}Turnos hoy: ${S.shifts}/4.</p>
+  <div class="sect"><h4>👷 Trabajar (beneficio personal)</h4>
+   <button class="btn" data-act="work" data-f="${P.arg}" ${S.shifts>=4?'disabled':''}>Trabajar turno · −25⚡ · ganas €950–1.600</button></div>
+  ${f.cat?`<div class="sect"><h4>🤝 Contrato de proveedor (beneficio del súper)</h4>
+   <p style="font-size:.88rem">Cada nivel abarata un <b>6%</b> todo lo de ${CATNAME[f.cat]}. Nivel actual: ${lv}/3.</p>
+   ${lv>=3?'<div class="maxed">✅ Contrato máximo</div>':`<button class="btn grn" data-act="contract" data-f="${P.arg}" ${S.cash<cost?'disabled':''}>Firmar con la caja del súper · ${fmt$(cost)}</button>`}</div>`:''}`;
+ }else if(P.kind==='bar'){
+  h=`<h2>🍺 Horchatería Santa Catalina</h2><p>Economía, ocio y los mejores chismes del barrio.</p>
+  <div class="sect"><h4>🍻 Consumir (paga tu cartera)</h4><div class="rowflex">
+   <button class="btn" data-act="drink">🥛 Horchata €8 · +ánimo +energía</button>
+   <button class="btn" data-act="tapa">🍩 Fartons €18 · ++ánimo ++energía</button></div></div>
+  <div class="sect"><h4>🎯 Dardos (apuesta)</h4>
+   <button class="btn" data-act="darts">Apostar €25 · puedes ganar €50</button></div>
+  <div class="sect"><h4>🗣️ Socializar</h4><div class="rowflex">
+   <button class="btn" data-act="chisme">👂 Pedir chisme €6 · soplo de mercado</button>
+   <button class="btn grn" data-act="ronda">🍻 Invitar ronda €50 · +relación con todos</button></div></div>`;
+ }else if(P.kind==='rest'){
+  h=`<h2>🍽️ Casa Carmela</h2>
+  <div class="sect"><h4>😋 Comer</h4><button class="btn" data-act="menu">Menú del día €32 · +40⚡ +ánimo</button></div>
+  <div class="sect"><h4>🎪 Catering para eventos</h4>
+   <button class="btn" data-act="catering" ${S.catered?'disabled':''}>Contratar hoy €80 (caja) · +0,3 reputación del súper</button></div>
+  <div class="sect"><h4>📦 Proveedor del restaurante</h4>
+   <p style="font-size:.88rem">Si activas el trato, cada noche el restaurante te compra hasta 20 unidades de stock al 120% de su precio justo.</p>
+   <button class="btn ${S.restDeal?'red':'grn'}" data-act="restd">${S.restDeal?'❌ Cancelar trato':'✅ Firmar trato diario'}</button></div>`;
+ }else if(P.kind==='gas'){
+  const vcost=Math.round(18000*Math.pow(1.8,S.vanLv));
+  h=`<h2>⛽ Gasolinera Repsol · Av. Primado Reig</h2>
+  <div class="sect"><h4>🚚 Furgoneta de reparto (nivel ${S.vanLv}/3 · +40📦 c/u)</h4><div class="rowflex">
+   ${S.vanLv<3?`<button class="btn" data-act="van" ${S.cash<vcost?'disabled':''}>Comprar furgoneta nv.${S.vanLv+1} · ${fmt$(vcost)} (caja)</button>`:'<span class="maxed">✅ Flota completa</span>'}
+   <button class="btn grn" data-act="fuel" ${S.fuelToday?'disabled':''}>⛽ Repostar hoy €120 (caja) · +clientes por reparto</button></div>
+   <p style="font-size:.85rem">Estado: ${S.fuelToday?'🟢 Repostada y repartiendo hoy':'🔴 Sin repostar'}</p></div>
+  <div class="sect"><h4>👷 Trabajo rápido</h4>
+   <button class="btn" data-act="workgas" ${S.shifts>=4?'disabled':''}>Atender surtidor · −20⚡ · ganas €80–90 (turnos ${S.shifts}/4)</button></div>`;
+ }else if(P.kind==='neighbor'){
+  const b=P.arg,r=relOf(b),bs=S.botState[b.id]||{lv:1,money:800};
+  h=`<h2>${b.emoji} Casa de ${b.name}</h2>
+  <p>Tienda rival de la CPU · Nivel ${bs.lv} · Facturación estimada ${fmt$(bs.money)}.</p>
+  <p>💛 Relación contigo: <b>${r}</b> ${r>=20?'· ¡Os lleváis genial!':r>=8?'· Buen rollo':'· Aún no os conocéis bien'}</p>
+  <div class="rowflex">
+   <button class="btn" data-act="greet" data-b="${b.id}" ${S.greeted[b.id]?'disabled':''}>👋 Saludar (+3 relación)</button>
+   <button class="btn ghost" data-act="chatopen">💬 Ir al chat de la plaza</button></div>
+  <p style="font-size:.85rem;margin-top:8px">A mejor relación, los vecinos pagan <b>más</b> por sus pedidos a tu súper.</p>`;
+ }else if(P.kind==='player'){
+  const o=P.arg;
+  h=`<h2>${o.emoji} Casa de ${o.name}</h2>
+  <p>🌐 Jugador/a online · Nivel ${o.lv||1} · Caja declarada: ${fmt$(o.money||0)}</p>
+  <div class="rowflex"><button class="btn ghost" data-act="chatopen">💬 Saludarl@ en el chat</button></div>`;
+ }else if(P.kind==='brokerProduct'){
+  const p=byId[P.arg]; if(!p)return;
+  const stock=S.stock[p.id]||0, price=mkCost(p.id);
+  const marketQty = Math.max(0, Math.floor(20 + 80 * (0.5 + 0.5 * Math.sin(S.day * 0.2 + p.id * 1.7))));
+  h=`<h2>${p.emoji} ${p.name}</h2>
+   <p><b>${CATNAME[p.cat]}</b> · Precio de mercado: ${fmt$(price)}/ud · Precio justo: ${fmt$(p.fair)}</p>
+   <div class="sect"><h4>📊 Detalles</h4>
+    <div class="orow"><span>Demanda</span><span>${'★'.repeat(Math.min(5,Math.round(p.pop/2)))}</span></div>
+    <div class="orow"><span>Cantidad disponible en el mercado</span><span><b>${marketQty} uds.</b></span></div>
+    <div class="orow"><span>Cantidad en tu super</span><span><b>${stock} uds.</b></span></div>
+    ${S.contracts[p.cat]?`<div class="orow"><span>Contrato activo</span><span>−${6*S.contracts[p.cat]}%</span></div>`:''}
+   </div>
+   <div class="sect"><h4>🛒 Compra directa</h4>
+    <div class="rowflex"><button class="btn grn" data-broker-buy="${p.id}">Comprar ×${buyQty}</button>
+    <button class="btn" data-broker-buy="${p.id}" data-q="0" title="Llenar">∞</button></div>
+   </div>`;
+ }else if(P.kind==='brokerEst'){
+  const e=P.arg; if(!e)return;
+  const own=(S.properties||[]).includes(e.id);
+  h=`<h2>${own?'✅':'🏢'} ${e.name}</h2>
+   <p><b>${e.type}</b> · ${own?'Propiedad tuya':'Disponible para comprar'}</p>
+   <div class="sect"><h4>ℹ️ Información</h4>
+    <div class="orow"><span>Precio de compra</span><span>${fmt$(e.cost)}</span></div>
+    <div class="orow"><span>Valor estimado de venta</span><span>${fmt$(Math.round(e.cost*.7))}</span></div>
+    <div class="orow"><span>Ubicación</span><span>Valencia</span></div>
+   </div>
+   <div class="sect"><h4>${own?'Gestión':'Operación'}</h4>
+    ${own?`<button class="btn red" data-sell-est="${e.id}">💸 Vender por ${fmt$(Math.round(e.cost*.7))}</button>`:
+      `<button class="btn grn" data-buy-est="${e.id}" ${S.wallet<e.cost?'disabled':''}>🏷️ Comprar por ${fmt$(e.cost)}</button>`}
+   </div>`;
+ }else if(P.kind==='brokerHouse'){
+  const b=typeof P.arg==='string'?BOTS.find(x=>x.id===P.arg):P.arg;
+  if(!b)return;
+  const r=relOf(b),bs=S.botState[b.id]||{lv:1,money:800};
+  h=`<h2>🏠 ${b.emoji} Casa de ${b.name}</h2>
+   <p>Vecino del barrio · Nivel ${bs.lv} · Relación: ${r}</p>
+   <div class="sect"><h4>👋 Interacción</h4>
+    <div class="rowflex">
+     <button class="btn" data-greet="${b.id}" ${S.greeted[b.id]?'disabled':''}>👋 Saludar (+3 relación)</button>
+     <button class="btn ghost" data-chat-open>💬 Chat</button>
+    </div>
+    <p style="font-size:.85rem;margin-top:6px">Mejor relación = mejores precios en pedidos.</p>
+   </div>`;
+ }else if(P.kind==='node'){
+  const nodeId=P.arg;
+  const node=NODOS_LIBRES.find(n=>n.id===nodeId);
+  if(!node)return;
+  const owned = S.ownedNodes && S.ownedNodes[nodeId];
+  const rented = S.rentedNodes && S.rentedNodes[nodeId];
+  const occupied = S.nodes && S.nodes[nodeId] && S.nodes[nodeId].buildingId;
+  const building = occupied ? landById[S.nodes[nodeId].buildingId] : null;
+  h=`<h2>🏗️ ${node.name}</h2>
+   <p><b>Tipo:</b> ${NODE_ICONS[node.type]||''} ${translateType(node.type)}</p>
+   <p>${owned?'✅ Propiedad tuya':rented?'🟡 Alquilado':'🟢 Libre'}</p>
+   ${occupied?`<p>🏗️ Edificio: <b>${building?building.name:'Desconocido'}</b></p>`:''}
+   <div class="sect"><h4>💰 Transacción</h4>
+    ${!owned&&!rented?`
+     <button class="btn grn" data-act="buyNode" data-node="${nodeId}" ${S.wallet<node.price?'disabled':''}>Comprar por ${fmt$(node.price)}</button>
+     <button class="btn" data-act="rentNode" data-node="${nodeId}" ${S.wallet<node.rent?'disabled':''}>Alquilar por ${fmt$(node.rent)}/día</button>
+    `:''}
+    ${owned?`<button class="btn red" data-act="sellNode" data-node="${nodeId}">Vender por ${fmt$(Math.round(node.price*.7))}</button>`:''}
+    ${rented?`<button class="btn red" data-act="unrentNode" data-node="${nodeId}">Cancelar alquiler</button>`:''}
+    ${owned&&!occupied?`<p style="font-size:.9rem;margin-top:8px">Puedes colocar un edificio de tipo <b>${translateType(node.type)}</b> aquí si tienes uno en tu inventario.</p>
+      <button class="btn" data-act="placeBuilding" data-node="${nodeId}" ${Object.keys(S.landBuildings).filter(k=>landById[k]?.type===node.type && S.landBuildings[k]>0).length?'':'disabled'}>🏗️ Colocar edificio</button>`:''}
+   </div>`;
+ }
+ c.innerHTML=h+`<div style="text-align:right;margin-top:8px"><button class="btn ghost" data-act="close">Cerrar ✖</button></div>`;
+ // Rebind eventos
+ c.querySelectorAll('[data-broker-buy]').forEach(b=>{
+  b.addEventListener('click',e=>{e.stopPropagation();const id=+b.dataset.brokerBuy;const fill=b.dataset.q==='0';buy(id,fill?0:buyQty,fill);renderPanel();});
+ });
+ c.querySelectorAll('[data-buy-est]').forEach(b=>{
+  b.addEventListener('click',e=>{e.stopPropagation();const id=b.dataset.buyEst;const est=START_ESTABLISHMENTS.find(x=>x.id===id);if(!est)return;if(S.wallet<est.cost){toast('💼 No te llega la cartera.');return;}S.wallet-=est.cost;S.properties.push(id);sBuy();feed(`🏢 Compraste ${est.name}`,'good');$('modal-panel').classList.remove('open');buildMap();updateHUD();save();toast(`✅ ${est.name} ya es tuyo.`);});
+ });
+ c.querySelectorAll('[data-sell-est]').forEach(b=>{
+  b.addEventListener('click',e=>{e.stopPropagation();const id=b.dataset.sellEst;const est=START_ESTABLISHMENTS.find(x=>x.id===id);if(!est||!S.properties.includes(id))return;const value=Math.round(est.cost*.7);S.properties=S.properties.filter(x=>x!==id);S.wallet+=value;sSale();feed(`💸 Vendiste ${est.name}`,'good');$('modal-panel').classList.remove('open');buildMap();updateHUD();save();toast(`💰 Venta: +${fmt$(value)}`);});
+ });
+ c.querySelectorAll('[data-greet]').forEach(b=>{
+  b.addEventListener('click',e=>{e.stopPropagation();const id=b.dataset.greet;const bot=BOTS.find(x=>x.id===id);if(!bot||S.greeted[bot.id])return;S.greeted[bot.id]=1;S.rel[bot.id]=(S.rel[bot.id]||0)+3;ticker(`👋 Saludaste a ${bot.name}`);renderPanel();});
+ });
+ c.querySelectorAll('[data-chat-open]').forEach(b=>{
+  b.addEventListener('click',e=>{e.stopPropagation();openPlaza();});
+ });
+ // Acciones de nodos
+ c.querySelector('[data-act="buyNode"]')?.addEventListener('click',e=>{
+   const nodeId=e.target.dataset.node;
+   const node=NODOS_LIBRES.find(n=>n.id===nodeId);
+   if(!node || S.wallet<node.price) return;
+   S.wallet-=node.price;
+   S.ownedNodes = S.ownedNodes||{};
+   S.ownedNodes[nodeId]=true;
+   S.nodes = S.nodes||{};
+   if(!S.nodes[nodeId]) S.nodes[nodeId]={};
+   S.nodes[nodeId].owned=true;
+   S.nodes[nodeId].rented=false;
+   logEconomy('Compra',`Compra de nodo ${node.name}`,node.price,'Sistema');
+   feed(`🏗️ Nodo ${node.name} comprado.`,'good');
+   $('modal-panel').classList.remove('open');
+   drawNodes(); updateHUD(); save(); toast('✅ Nodo adquirido.');
+ });
+ c.querySelector('[data-act="rentNode"]')?.addEventListener('click',e=>{
+   const nodeId=e.target.dataset.node;
+   const node=NODOS_LIBRES.find(n=>n.id===nodeId);
+   if(!node || S.wallet<node.rent) return;
+   S.wallet-=node.rent;
+   S.rentedNodes = S.rentedNodes||{};
+   S.rentedNodes[nodeId]=true;
+   S.nodes = S.nodes||{};
+   if(!S.nodes[nodeId]) S.nodes[nodeId]={};
+   S.nodes[nodeId].owned=false;
+   S.nodes[nodeId].rented=true;
+   logEconomy('Alquiler',`Alquiler de nodo ${node.name} (1 día)`,node.rent,'Sistema');
+   feed(`🏗️ Nodo ${node.name} alquilado por 1 día.`,'good');
+   $('modal-panel').classList.remove('open');
+   drawNodes(); updateHUD(); save(); toast('🟡 Nodo alquilado.');
+ });
+ c.querySelector('[data-act="sellNode"]')?.addEventListener('click',e=>{
+   const nodeId=e.target.dataset.node;
+   const node=NODOS_LIBRES.find(n=>n.id===nodeId);
+   if(!node || !S.ownedNodes[nodeId]) return;
+   const value=Math.round(node.price*.7);
+   S.wallet+=value;
+   delete S.ownedNodes[nodeId];
+   if(S.nodes[nodeId]){ S.nodes[nodeId].owned=false; S.nodes[nodeId].buildingId=null; }
+   logEconomy('Venta',`Venta de nodo ${node.name}`,value,'Sistema');
+   feed(`💰 Nodo ${node.name} vendido por ${fmt$(value)}`,'good');
+   $('modal-panel').classList.remove('open');
+   drawNodes(); updateHUD(); save(); toast('💰 Nodo vendido.');
+ });
+ c.querySelector('[data-act="unrentNode"]')?.addEventListener('click',e=>{
+   const nodeId=e.target.dataset.node;
+   if(!S.rentedNodes[nodeId]) return;
+   delete S.rentedNodes[nodeId];
+   if(S.nodes[nodeId]){ S.nodes[nodeId].rented=false; S.nodes[nodeId].buildingId=null; }
+   feed(`🏗️ Alquiler de nodo ${NODOS_LIBRES.find(n=>n.id===nodeId)?.name} cancelado.`,'good');
+   $('modal-panel').classList.remove('open');
+   drawNodes(); updateHUD(); save(); toast('Alquiler cancelado.');
+ });
+ c.querySelector('[data-act="placeBuilding"]')?.addEventListener('click',e=>{
+   const nodeId=e.target.dataset.node;
+   const node=NODOS_LIBRES.find(n=>n.id===nodeId);
+   if(!node || !S.ownedNodes[nodeId]) return;
+   const available = Object.keys(S.landBuildings).filter(k => {
+     const b=landById[k];
+     return b && b.type===node.type && S.landBuildings[k]>0;
+   });
+   if(available.length===0){ toast('No tienes edificios de tipo '+translateType(node.type)+' para colocar.'); return; }
+   const sub = document.createElement('div');
+   sub.className = 'mcard wide';
+   sub.style.maxWidth='500px';
+   sub.innerHTML = `<h2>🏗️ Colocar edificio en ${node.name}</h2>
+   <p>Elige un edificio de tipo <b>${translateType(node.type)}</b> que tengas en el inventario:</p>
+   <div class="sect">${available.map(id=>{
+     const b=landById[id];
+     return `<button class="btn" data-place="${id}" style="width:100%;margin-bottom:6px;text-align:left">${LAND_ICONS[b.type]||''} ${b.name} (${S.landBuildings[id]} uds.)</button>`;
+   }).join('')}</div>
+   <button class="btn ghost" data-cancel-place>Cancelar</button>`;
+   const modal = document.createElement('div');
+   modal.className='modal open nested-modal';
+   modal.style.display='flex';
+   modal.appendChild(sub);
+   document.body.appendChild(modal);
+   sub.querySelector('[data-cancel-place]')?.addEventListener('click', ()=>modal.remove());
+   sub.querySelectorAll('[data-place]').forEach(btn=>{
+     btn.addEventListener('click', ()=>{
+       const buildingId = btn.dataset.place;
+       const b=landById[buildingId];
+       if(!b) return;
+       S.landBuildings[buildingId]--;
+       if(S.landBuildings[buildingId]<=0) delete S.landBuildings[buildingId];
+       S.nodes[nodeId].buildingId = buildingId;
+       feed(`🏗️ ${b.name} colocado en ${node.name}`,'good');
+       modal.remove();
+       $('modal-panel').classList.remove('open');
+       drawNodes(); updateHUD(); save(); toast('✅ Edificio colocado.');
+     });
+   });
+ });
+}
+function refreshPanel(){if(PANEL&&$('modal-panel').classList.contains('open'))renderPanel();}
+
+/* ================= BROKER ================= */
+function openBroker(){$('view-super').style.display='none';$('view-map').style.display='block';renderBroker();$('modal-broker').classList.add('open');}
+$('modal-broker').addEventListener('click',e=>{if(e.target.id==='modal-broker')$('modal-broker').classList.remove('open');});
+
+let brokerCurrentCategory='ALL';
+let brokerLandType='ALL';
+
+function renderBroker(){
+ const c=$('brokerCard'); if(!c)return;
+ const online=S.mode==='online'&&FB.db;
+ let catHtml='<div class="cat-item active" data-cat="ALL">📋 Todos <span class="badge-cat">'+(PRODUCTS.filter(p=>p.unlock<=S.level).length)+'</span></div>';
+ const hasSuper=(S.properties||[]).some(id=>id==='est09');
+ const groups={};
+ PRODUCTS.filter(p=>p.unlock<=S.level).forEach(p=>{
+  if(!groups[p.cat]) groups[p.cat]=[];
+  groups[p.cat].push(p);
+ });
+ for(const cat of Object.keys(CATNAME).filter(c=>groups[c])){
+  const count=groups[cat].length;
+  catHtml += `<div class="cat-item" data-cat="${cat}">${CATEMO[cat]} ${CATNAME[cat]} <span class="badge-cat">${count}</span></div>`;
+ }
+ catHtml += `<div class="cat-item" data-cat="_locales">🏢 Locales <span class="badge-cat">${START_ESTABLISHMENTS.length}</span></div>`;
+ catHtml += `<div class="cat-item" data-cat="_casas">🏠 Casas <span class="badge-cat">${BOTS.length}</span></div>`;
+ catHtml += `<div class="cat-item" data-cat="_terrenos">🏗️ Terrenos y Edificios <span class="badge-cat">${LAND_BUILDINGS.length}</span></div>`;
+
+ let tableRows='';
+ let landHtml='';
+ const currentCat=brokerCurrentCategory;
+ if(currentCat==='_terrenos'){
+  const landType=brokerLandType||'ALL';
+  const landTypesPresent=[...new Set(LAND_BUILDINGS.map(b=>b.type))];
+  let typeBar='<div class="lc-btn'+(landType==='ALL'?' active':'')+'" data-land-type="ALL">📋 Todos</div>';
+  landTypesPresent.forEach(t=>{typeBar+=`<div class="lc-btn${landType===t?' active':''}" data-land-type="${t}">${LAND_ICONS[t]||'🏗️'} ${translateType(t)}</div>`;});
+  const items=landType==='ALL'?LAND_BUILDINGS:LAND_BUILDINGS.filter(b=>b.type===landType);
+  const cards=items.map(b=>{
+   const owned=(S.landBuildings&&S.landBuildings[b.id])||0;
+   const canAfford=S.wallet>=b.price;
+   return `<div class="land-card">
+    <h3>${LAND_ICONS[b.type]||'🏗️'} ${b.name}</h3>
+    <div class="land-meta">Tipo: ${translateType(b.type)}</div>
+    <div class="land-meta">Tamaño: ${b.size} m²</div>
+    <div class="land-produce">${b.produce?('Produce: '+b.produce):'No produce directamente.'}</div>
+    <div class="land-desc">${b.desc}</div>
+    <div class="land-price">Precio: ${fmtEuroInt(b.price)}</div>
+    ${owned?`<span class="land-owned">✅ Tienes: ${owned}</span>`:''}
+    <button class="btn" data-buy-land="${b.id}" ${canAfford?'':'disabled'}>${canAfford?'🏷️ Comprar':'💼 Sin cartera'}</button>
+   </div>`;
+  }).join('');
+  landHtml=`<div class="landcat-bar" id="landTypeBar">${typeBar}</div><div class="land-grid">${cards||'<p style="text-align:center;padding:20px;color:#8a7f68">No hay edificios en esta categoría.</p>'}</div>`;
+ } else if(currentCat==='ALL' || currentCat.startsWith('_')===false){
+  const items = currentCat==='ALL' ? PRODUCTS.filter(p=>p.unlock<=S.level) : PRODUCTS.filter(p=>p.cat===currentCat && p.unlock<=S.level);
+  items.forEach(p=>{
+   const stock=S.stock[p.id]||0;
+   const buyPrice=mkCost(p.id);
+   const sellPrice=priceOf(p.id);
+   const prev=S.mkPrev[p.id]||buyPrice;
+   const change=prev?((buyPrice-prev)/prev*100):0;
+   const changeStr=change>0.1?`<span class="trend-up">▲ +${change.toFixed(1)}%</span>`:change<-0.1?`<span class="trend-down">▼ ${change.toFixed(1)}%</span>`:'<span class="trend-eq">▬ 0.0%</span>';
+   const stockLabel=hasSuper?`<span class="badge-stock ${stock>0?'own':''}">${stock}</span>`:'<span class="badge-stock">-</span>';
+   tableRows += `<tr data-broker-product="${p.id}">
+    <td class="col-emoji">${p.emoji}</td>
+    <td class="col-name">${p.name}</td>
+    <td class="col-cat">${CATNAME[p.cat]}</td>
+    <td class="col-buy">${fmt$(buyPrice)}</td>
+    <td class="col-sell">${fmt$(sellPrice)}</td>
+    <td class="col-change">${changeStr}</td>
+    <td class="col-stock">${stockLabel}</td>
+   </tr>`;
+  });
+  if(!items.length) tableRows='<tr><td colspan="7" style="text-align:center;padding:20px;color:#8a7f68">No hay productos en esta categoría.</td></tr>';
+ } else if(currentCat==='_locales'){
+  START_ESTABLISHMENTS.forEach(e=>{
+   const own=(S.properties||[]).includes(e.id);
+   tableRows += `<tr data-broker-est="${e.id}">
+    <td class="col-emoji">${e.emoji}</td>
+    <td class="col-name">${e.name}</td>
+    <td class="col-cat">${e.type}</td>
+    <td class="col-buy">${fmt$(e.cost)}</td>
+    <td class="col-sell">${own?'Propio':'Disponible'}</td>
+    <td class="col-change">—</td>
+    <td class="col-stock"><span class="badge-stock est">${own?'✅':'📌'}</span></td>
+   </tr>`;
+  });
+  if(!START_ESTABLISHMENTS.length) tableRows='<tr><td colspan="7" style="text-align:center;padding:20px;color:#8a7f68">No hay locales disponibles.</td></tr>';
+ } else if(currentCat==='_casas'){
+  BOTS.forEach(b=>{
+   const r=relOf(b);
+   tableRows += `<tr data-broker-house="${b.id}">
+    <td class="col-emoji">${b.emoji}</td>
+    <td class="col-name">Casa de ${b.name}</td>
+    <td class="col-cat">Vecino</td>
+    <td class="col-buy">—</td>
+    <td class="col-sell">Relación ${r}</td>
+    <td class="col-change">—</td>
+    <td class="col-stock"><span class="badge-stock">Visitable</span></td>
+   </tr>`;
+  });
+  if(!BOTS.length) tableRows='<tr><td colspan="7" style="text-align:center;padding:20px;color:#8a7f68">No hay casas disponibles.</td></tr>';
+ }
+
+ const offersHtml = (S.offers||[]).length?S.offers.map(o=>{const p=byId[o.pid];return `<div class="orow"><span>${o.emoji||'🤝'} <b>${o.name}</b> ofrece ${o.qty}× ${p.emoji} ${p.name} · ${fmt$(o.price)}</span><button class="btn grn" data-act="buyoffer" data-id="${o.id}" ${S.cash>=o.price?'':'disabled'}>Comprar lote</button></div>`;}).join(''):'<p style="font-size:.86rem;color:#8a7f68">Todavía no hay lotes publicados.</p>';
+
+ const isLandCat=currentCat==='_terrenos';
+ c.innerHTML=`<h2>🏪 Mercado-Broker de mi barrio</h2><p class="broker-note">${isLandCat?'🏗️ Compra terrenos y edificios para tu ciudad.':(online?'🌐 Modo online: negocia con otros jugadores mediante lotes publicados.':'🤖 Modo offline: la computadora genera pedidos y lotes para negociar.')} <br>👆 ${isLandCat?'Elige un tipo y pulsa Comprar en la tarjeta que te interesa.':'Haz clic en cualquier fila para ver más información.'}</p>
+ <div class="broker-layout">
+  <div class="broker-categories" id="brokerCategories">${catHtml}</div>
+  ${isLandCat?`<div class="broker-table-wrap">${landHtml}</div>`:`<div class="broker-table-wrap">
+   <table class="broker-table">
+    <thead><tr>
+     <th></th><th>Producto</th><th>Categoría</th><th>Precio Compra</th><th>Precio Venta</th><th>Cambio 24h</th><th>Stock</th>
+    </tr></thead>
+    <tbody id="brokerTableBody">${tableRows}</tbody>
+   </table>
+  </div>`}
+ </div>
+ ${isLandCat?'':`<div class="sect" style="margin-top:12px"><h4>🤝 Ofertas de otros comerciantes</h4><div>${offersHtml}</div></div>
+ ${online?`<div class="sect"><h4>📢 Publicar un lote</h4>${Object.keys(S.stock).some(k=>S.stock[k]>0)?`<div class="rowflex"><select id="brokerProd" style="flex:1">${Object.keys(S.stock).filter(k=>S.stock[k]>0).map(k=>`<option value="${k}">${byId[k].emoji} ${byId[k].name} (${S.stock[k]})</option>`).join('')}</select><input id="brokerQty" type="number" min="1" value="10" style="width:62px"><input id="brokerPrice" type="number" min="1" value="20" style="width:75px"><button class="btn grn" data-act="brokerPublish">Publicar</button></div>`:'<p style="font-size:.86rem">Compra stock en Productos para poder publicar lotes.</p>'}</div>`:''}`}
+ <div style="text-align:right;margin-top:12px"><button class="btn ghost" data-act="closeBroker">Cerrar ✖</button></div>`;
+
+ c.querySelectorAll('.broker-categories .cat-item').forEach(el=>{
+  el.addEventListener('click',function(){
+   c.querySelectorAll('.broker-categories .cat-item').forEach(x=>x.classList.remove('active'));
+   this.classList.add('active');
+   brokerCurrentCategory=this.dataset.cat;
+   renderBroker();
+  });
+ });
+ c.querySelectorAll('#brokerTableBody tr').forEach(row=>{
+  row.addEventListener('click',function(e){
+   if(e.target.closest('button')) return;
+   const prod=this.dataset.brokerProduct;
+   if(prod){ openPanel('brokerProduct', +prod); return; }
+   const est=this.dataset.brokerEst;
+   if(est){ const eObj=START_ESTABLISHMENTS.find(x=>x.id===est); if(eObj) openPanel('brokerEst', eObj); return; }
+   const house=this.dataset.brokerHouse;
+   if(house){ const bot=BOTS.find(x=>x.id===house); if(bot) openPanel('brokerHouse', bot); return; }
+  });
+ });
+ c.querySelectorAll('#landTypeBar [data-land-type]').forEach(el=>{
+  el.addEventListener('click',function(){
+   brokerLandType=this.dataset.landType;
+   renderBroker();
+  });
+ });
+ c.querySelectorAll('[data-buy-land]').forEach(b=>{
+  b.addEventListener('click',function(e){
+   e.stopPropagation();
+   const id=b.dataset.buyLand; const item=landById[id]; if(!item)return;
+   if(S.wallet<item.price){toast('💼 No te llega la cartera.');return;}
+   S.wallet-=item.price;
+   S.landBuildings=S.landBuildings||{};
+   S.landBuildings[id]=(S.landBuildings[id]||0)+1;
+   feed(`🏗️ Compraste ${item.name}`,'good');
+   toast(`✅ ${item.name} adquirido por ${fmtEuroInt(item.price)}.`);
+   updateHUD();save();renderBroker();
+  });
+ });
+ c.querySelector('[data-act="brokerPublish"]')?.addEventListener('click',function(){
+  const sel=$('brokerProd'), qEl=$('brokerQty'), pEl=$('brokerPrice');
+  if(!sel||!sel.value)return;
+  const pid=+sel.value, qty=Math.min(+qEl.value||1, S.stock[pid]||0), price=+pEl.value||1;
+  if(qty<1||price<1)return;
+  S.stock[pid]-=qty; dirty.add(pid); if(S.stock[pid]<=0) delete S.stock[pid];
+  fbAdd('offers',{name:S.pname,pid,qty,price});
+  toast('📢 Lote publicado en el Mercado.');
+  renderBroker(); updateHUD(); updateDynamic(); save();
+ });
+}
+document.addEventListener('click',e=>{
+ const b=e.target.closest('[data-act]'); if(!b) return;
+ const a=b.dataset.act;
+ if(a==='closeBroker'){$('modal-broker').classList.remove('open'); return;}
+ if(a==='close'){$('modal-panel').classList.remove('open'); return;}
+ if(a==='buyoffer'){const id=b.dataset.id; buyOfferLocal(id); return;}
+ // otros data-act ya manejados antes
+});
+
+/* ================= PLAZA (funciones auxiliares) ================= */
+let CHAT=[];
+function addChat(name,emoji,msg){CHAT.push({name,emoji,msg});if(CHAT.length>30)CHAT.shift();}
+function say(msg){if(S.mode==='online'&&FB.db)fbChat(msg);else addChat(S.pname,'⭐',msg);}
+function openPlaza(){openPanel('plaza');}
+function sendChat(){const i=document.getElementById('chatIn');const m=(i.value||'').trim();if(!m)return;i.value='';
+ say(m);
+ if(!(S.mode==='online'&&FB.db))setTimeout(()=>{const bot=rnd(BOTS);addChat(bot.name,bot.emoji,rnd(REPLIES));},1200+Math.random()*1500);}
+const REPLIES=['¿Me fías una bolsa de leche? 😅','Tu súper tiene los mejores precios del barrio.','¿Visteis la oferta del día? 👀',
+ 'Marta dice que sus tomates son mejores que los tuyos 😏','¡Hoy toca paella en mi casa!','¿Alguien sabe si mañana llueve?',
+ 'El bar está hasta arriba esta noche 🍻','Necesito papel higiénico URGENTE 🧻','¿Cuándo abres la sección gourmet? 👑',
+ 'Mi nevera hace ruidos raros…','¡Ánimo con el negocio, vecin@!'];
+const GOSSIP=['¿A que no sabes quién compró 40 sandías? 🍉','El del restaurante quiere proveedores nuevos…','Dicen que la fábrica de lácteos regala muestras 🧀'];
+function prepOrder(id){const o=S.orders.find(x=>x.id===id);if(!o)return;
+ const p=byId[o.pid];if((S.stock[o.pid]||0)<o.qty){toast('📦 No tienes stock suficiente.');return;}
+ S.stock[o.pid]-=o.qty;dirty.add(o.pid);if(S.stock[o.pid]<=0)delete S.stock[o.pid];
+ const pay=r2(p.fair*o.qty*o.premium);S.cash+=pay;gainXP(o.qty);logEconomy('Venta',`Venta de ${o.qty} unidades de ${p.name}`,pay,o.name);
+ const bot=BOTS.find(b=>b.name===o.name);if(bot)S.rel[bot.id]=(S.rel[bot.id]||0)+5;
+ S.orders=S.orders.filter(x=>x.id!==id);
+ feed(`📦 Pedido entregado a ${o.name}: +${fmt$(pay)}`,'good');fx('+'+fmt$(pay),'plus');sSale();
+ if(S.mode==='online'&&FB.db&&o.fbId)FB.db.collection('rooms').doc(S.room).collection('orders').doc(o.fbId).delete().catch(()=>{});
+ refreshPanel();updateHUD();updateDynamic();}
+function buyOfferLocal(id){const o=S.offers.find(x=>x.id===id);if(!o)return;
+ if(S.cash<o.price){toast('🏪 La caja no llega.');return;}
+ if(o.qty>cap()-totalStock()){toast('📦 Almacén lleno.');return;}
+ S.cash-=o.price;addStock(o.pid,o.qty);S.offers=S.offers.filter(x=>x.id!==id);logEconomy('Broker',`Compra de lote: ${o.qty} unidades de ${byId[o.pid].name}`,o.price,o.name);
+ if(S.mode==='online'&&FB.db&&o.fbId){FB.db.collection('rooms').doc(S.room).collection('offers').doc(o.fbId).delete().catch(()=>{});
+  if(o.uid)FB.db.collection('rooms').doc(S.room).collection('players').doc(o.uid)
+   .update({money:firebase.firestore.FieldValue.increment(o.price)}).catch(()=>{});}
+ feed(`🤝 Lote comprado a ${o.name}: ${o.qty}× ${byId[o.pid].name}`,'good');
+ refreshPanel();updateHUD();updateDynamic();}
+function publishOfferForm(){const sel=document.getElementById('ofProd');if(!sel||!sel.value){toast('No tienes stock que vender.');return;}
+ const pid=+sel.value,qty=Math.min(+document.getElementById('ofQty').value||10,S.stock[pid]||0),price=+document.getElementById('ofPrice').value||10;
+ if(qty<1||price<1)return;
+ S.stock[pid]-=qty;dirty.add(pid);if(S.stock[pid]<=0)delete S.stock[pid];
+ fbAdd('offers',{name:S.pname,pid,qty,price});
+ toast('📢 Lote publicado en la plaza.');refreshPanel();updateHUD();updateDynamic();}
+function updatePlazaBadge(){const e=document.getElementById('plazaBadge');
+ if(e)e.textContent=`💬 · 📦${S.orders.length}`;}
+
+/* ================= VECINOS CPU ================= */
+function botTick(){
+ if(S.mode==='online'&&Math.random()<.5)return;
+ const bot=rnd(BOTS);const r=Math.random();
+ if(r<.3){addChat(bot.name,bot.emoji,rnd([...REPLIES,...GOSSIP]));ticker(`${bot.emoji} ${bot.name} charla en la plaza.`);}
+ else if(r<.55&&S.orders.length<4){
+  const p=rnd(PRODUCTS.filter(p=>p.unlock<=S.level));
+  const qty=ri(4,14),premium=1.2+Math.min(.4,(S.rel[bot.id]||0)*.012);
+  S.orders.push({id:'o'+Date.now()+ri(0,99),name:bot.name,emoji:bot.emoji,pid:p.id,qty,premium:+premium.toFixed(2),exp:S.day+1});
+  toast(`📦 ${bot.emoji} ${bot.name} te pide ${qty}× ${p.name}`);
+  ticker(`${bot.emoji} ${bot.name} ha dejado un pedido para tu súper.`);}
+ else if(r<.7&&S.offers.filter(o=>o.type!=='lonja').length<4){
+  const p=rnd(PRODUCTS.filter(p=>p.unlock<=S.level));const qty=ri(8,26);
+  const price=r2(qty*p.cost*(0.7+Math.random()*.35));
+  S.offers.push({id:'f'+Date.now()+ri(0,99),name:bot.name,emoji:bot.emoji,pid:p.id,qty,price});
+  ticker(`${bot.emoji} ${bot.name} vende un lote de ${p.name} en la plaza.`);}
+ else ticker(rnd([`${bot.emoji} ${bot.name} trabaja en ${rnd(FACTS).name}.`,`${bot.emoji} ${bot.name} hace la compra en tu competencia.`,
+  `🚌 Pasa el autobús.`,`🐕 Un perro pasea solo por la calle Mayor.`,`${bot.emoji} ${bot.name} tiende la ropa.`]));
+ updatePlazaBadge();
+ if(PANEL&&PANEL.kind==='plaza')renderPlazaPanel();}
+
+/* ================= FIREBASE ================= */
+const FB={db:null,uid:null,meet:null};
+function roomPlayerCount(){
+ if(!FB.meet)return 1;
+ const now=Date.now();
+ const active=Object.values(FB.meet).filter(p=>{
+  const t=p.lastSeen&&typeof p.lastSeen.toMillis==='function'?p.lastSeen.toMillis():now;
+  return (now-t)<70000;
+ });
+ return 1+active.length;}
+function updateWaitingUI(){
+ if(S.mode!=='online'||!FB.db)return;
+ const full=roomPlayerCount()>=2;
+ $('tbMode').textContent='🌐 Sala: '+S.room+' ('+roomPlayerCount()+'/2+)';
+ if(full)$('modal-waiting').classList.remove('open');
+ else{$('waitRoomCode').textContent=S.room;renderFriends('friendsListWait');$('modal-waiting').classList.add('open');}}
+function goOnline(room){
+ if(!FB_OK){toast('⚠️ Firebase sin configurar: juegas con vecinos CPU.');S.mode='cpu';$('tbMode').textContent='🤖 Offline';return false;}
+ try{firebase.initializeApp(FIREBASE_CONFIG);}catch(e){}
+ firebase.auth().signInAnonymously().then(cr=>{
+  FB.uid=cr.user.uid;FB.db=firebase.firestore();S.room=room;S.mode='online';
+  $('tbMode').textContent='🌐 Sala: '+room;
+  fbHeartbeat();setInterval(fbHeartbeat,25000);
+  FB.db.collection('rooms').doc(room).collection('players').onSnapshot(s=>{
+   FB.meet={};s.forEach(d=>{if(d.id!==FB.uid)FB.meet[d.id]=d.data();});renderHouses();updateWaitingUI();});
+  FB.db.collection('rooms').doc(room).collection('chat').orderBy('ts','desc').limit(30).onSnapshot(s=>{
+   CHAT=[];s.forEach(d=>{const m=d.data();CHAT.push({name:m.name,emoji:m.emoji||'🙂',msg:m.msg});});
+   CHAT.reverse();renderChatbox();});
+  FB.db.collection('rooms').doc(room).collection('offers').onSnapshot(s=>{
+   S.offers=[];s.forEach(d=>{const o=d.data();o.id='fb'+d.id;o.fbId=d.id;S.offers.push(o);});
+   if(PANEL&&PANEL.kind==='plaza')renderPlazaPanel();if($('modal-broker')?.classList.contains('open'))renderBroker();});
+  FB.db.collection('rooms').doc(room).collection('orders').onSnapshot(s=>{
+   S.orders=S.orders.filter(o=>!o.fbId);
+   s.forEach(d=>{const o=d.data();o.id='fb'+d.id;o.fbId=d.id;S.orders.push(o);});
+   updatePlazaBadge();if(PANEL&&PANEL.kind==='plaza')renderPlazaPanel();});
+  toast('🌐 ¡Conectado a la sala '+room+'!');fbChat('¡Hola! '+S.pname+' se ha conectado 👋');
+  updateWaitingUI();
+ }).catch(e=>{toast('❌ No se pudo conectar: '+e.message+'. Modo CPU.');S.mode='cpu';$('tbMode').textContent='🤖 Offline';});
+ return true;}
+function fbHeartbeat(){if(!FB.db)return;
+ FB.db.collection('rooms').doc(S.room).collection('players').doc(FB.uid).set({
+  name:S.pname,emoji:'⭐',color:'#e8b23c',level:S.level,money:Math.round(S.cash),wallet:Math.round(S.wallet),
+  lastSeen:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}).catch(()=>{});
+ FB.db.collection('lobby').doc(FB.uid).set({name:S.pname,room:S.room,
+  ts:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}).catch(()=>{});}
+function fbChat(msg){if(!FB.db)return;FB.db.collection('rooms').doc(S.room).collection('chat')
+ .add({name:S.pname,emoji:'⭐',msg,ts:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});}
+function fbAdd(col,data){if(!FB.db)return;FB.db.collection('rooms').doc(S.room).collection(col)
+ .add(Object.assign({ts:firebase.firestore.FieldValue.serverTimestamp(),uid:FB.uid},data)).catch(()=>{});}
+
+/* ================= EMPAREJAMIENTO ================= */
+function findRandomPlayer(){
+ if(!FB_OK){toast('⚠️ Necesitas el modo online (Firebase) para buscar jugadores.');return;}
+ const go=()=>{
+  FB.db.collection('lobby').limit(50).get().then(s=>{
+   const now=Date.now(),cands=[];
+   s.forEach(d=>{if(d.id===FB.uid)return;const p=d.data();
+    const t=p.ts&&p.ts.toMillis?p.ts.toMillis():0;
+    if(now-t<90000&&p.room!==S.room)cands.push(p);});
+   if(!cands.length){$('modal-noplayers').classList.add('open');return;}
+   const pick=rnd(cands);
+   toast('🎲 ¡Te unes a la sala de '+pick.name+'!');
+   if(FB.db&&S.room)FB.db.collection('rooms').doc(S.room).collection('players').doc(FB.uid).delete().catch(()=>{});
+   goOnline(pick.room);
+  }).catch(()=>toast('❌ No se pudo buscar jugadores ahora mismo.'));};
+ if(S.mode==='online'&&FB.db)go();
+ else{S.pname=($('introName').value.trim()||S.pname||'ALEX').toUpperCase();
+  const r=$('introRoom')&&$('introRoom').value.trim()||'barrio-'+Math.floor(Math.random()*9000+1000);
+  if(!S.started)begin('online');else goOnline(r);
+  setTimeout(go,1200);}}
+
+/* ================= AMIGOS ================= */
+const FRIENDS_KEY='stFriendsV1';
+const loadFriends=()=>{try{return JSON.parse(localStorage.getItem(FRIENDS_KEY)||'[]');}catch(e){return[];}};
+const saveFriends=f=>localStorage.setItem(FRIENDS_KEY,JSON.stringify(f));
+function renderFriends(containerId){
+ const box=$(containerId);if(!box)return;
+ const friends=loadFriends();
+ if(!friends.length){box.className='emptybox';box.innerHTML='Aún no has añadido amigos.';return;}
+ box.className='';
+ box.innerHTML=friends.map((f,i)=>`<div class="orow">
+   <span>👤 <b>${f.name}</b> <span style="color:#8a7f68;font-size:.82rem">${f.phone}</span></span>
+   <span class="rowflex" style="gap:6px">
+    <button class="btn grn" data-wa="${i}" style="padding:6px 10px">📲 WhatsApp</button>
+    <button class="btn red" data-rmf="${i}" style="padding:6px 10px">🗑️</button></span></div>`).join('');
+ box.querySelectorAll('[data-wa]').forEach(b=>b.onclick=()=>waInvite(friends[+b.dataset.wa]));
+ box.querySelectorAll('[data-rmf]').forEach(b=>b.onclick=()=>{const fr=loadFriends();fr.splice(+b.dataset.rmf,1);saveFriends(fr);
+  renderFriends('friendsList');renderFriends('friendsListWait');});}
+function waInvite(friend){
+ const room=S.room||($('introRoom')&&$('introRoom').value.trim())||'barrio-1';
+ const msg=`¡Hola ${friend.name}! 🏘️ Te invito a jugar a SuperGanga Tycoon online. Entra en modo 🌐 Online y usa el código de sala: ${room}`;
+ const phone=(friend.phone||'').replace(/[^\d+]/g,'');
+ window.open('https://wa.me/'+encodeURIComponent(phone)+'?text='+encodeURIComponent(msg),'_blank');}
+$('btnAddFriend').onclick=()=>{
+ const name=$('friendName').value.trim(),phone=$('friendPhone').value.trim();
+ if(!name||!phone){toast('✏️ Escribe nombre y móvil.');return;}
+ const fr=loadFriends();fr.push({name,phone});saveFriends(fr);
+ $('friendName').value='';$('friendPhone').value='';
+ renderFriends('friendsList');renderFriends('friendsListWait');toast('✅ Amigo guardado.');};
+$('btnFriends').onclick=()=>{renderFriends('friendsList');$('modal-friends').classList.add('open');};
+$('btnFriendsIntro').onclick=()=>{renderFriends('friendsList');$('modal-friends').classList.add('open');};
+$('btnRandomPlayer2').onclick=findRandomPlayer;
+$('btnNoPlayersCancel').onclick=()=>{$('modal-noplayers').classList.remove('open');};
+$('btnNoPlayersYes').onclick=()=>{
+ $('modal-noplayers').classList.remove('open');
+ $('modal-waiting').classList.remove('open');
+ S.mode='cpu';$('tbMode').textContent='🤖 Offline vs CPU';
+ toast('🤖 Juegas contra la IA.');
+};
+$('btnCopyRoom').onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText(S.room||'barrio-1').then(()=>toast('📋 Código copiado.')).catch(()=>{});};
+$('btnCancelWait').onclick=()=>{$('modal-waiting').classList.remove('open');S.mode='cpu';$('tbMode').textContent='🤖 Offline vs CPU';
+ toast('🤖 Juegas contra la IA mientras esperas.');};
+$('btnBackMenuWait').onclick=()=>{
+ $('modal-waiting').classList.remove('open');
+ S.started=false;S.paused=true;
+ $('topbar').style.display='none';
+ S.startProperties=[];
+ renderOrigins();renderStartEstablishments();
+ $('modal-intro').classList.add('open');
+};
+
+/* ================= HUD / VISTAS ================= */
+let dispCash=0,dispWallet=0;
+function updateHUD(){
+ dispWallet+=(S.wallet-dispWallet)*.3;if(Math.abs(S.wallet-dispWallet)<.01)dispWallet=S.wallet;
+ $('tbWallet').textContent=fmt$(dispWallet);$('tbWallet').style.color=S.wallet<0?'#ff8a7a':'';
+ $('tbEnergy').firstElementChild.style.width=S.energy+'%';
+ $('tbMood').textContent=S.mood>=80?'😄':S.mood>=55?'😊':S.mood>=30?'😐':S.mood>=15?'😟':'😭';
+ $('tbDay').textContent=S.day;
+ const h=Math.floor(S.clockMin/60),m=S.clockMin%60;
+ $('tbClock').textContent=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+ $('sun').textContent=h<7?'🌙':h<11?'🌤️':h<18?'☀️':h<21?'🌇':'';
+ $('scene').style.opacity=h>=21?Math.min(.3,(h-20)*.07):h<7?.25:h<10?(10-h)*.02:0;
+ $('mapwrap').classList.toggle('night',h>=21||h<7);
+ $('storeName').textContent=S.name;
+ $('rep').textContent=S.rep.toLocaleString('es-ES',{minimumFractionDigits:1});
+ const full=Math.round(S.rep);$('stars').textContent='★'.repeat(full)+'☆'.repeat(5-full);
+ $('level').textContent=S.level;$('xpbar').style.width=(100*S.xp/needXP(S.level))+'%';
+ const ts=totalStock(),c=cap();$('stockT').textContent=fmtI(ts);$('capT').textContent=fmtI(c);
+ $('capbar').style.width=Math.min(S.energyMax||100,100*ts/c)+'%';
+ $('todayCust').textContent=fmtI(S.dd.cust);$('todayRev').textContent=fmt$(S.dd.rev).replace(',00','');
+ if(superLbl)superLbl();updatePlazaBadge();
+ if($('tab-stats').classList.contains('active'))renderStats();
+}
+(function tween(){dispCash+=(S.cash-dispCash)*.18;if(Math.abs(S.cash-dispCash)<.01)dispCash=S.cash;
+ $('cash').textContent=fmt$(dispCash);$('cash').style.color=S.cash<0?'#c62f20':'';requestAnimationFrame(tween);})();
+function invalidateMapSize(){if(leafMap)leafMap.invalidateSize();}
+window.addEventListener('resize',invalidateMapSize);
+function showView(v){if(!S.started){$('view-map').style.display='none';$('view-super').style.display='none';return;}$('topbar').style.display='flex';$('view-map').style.display=v==='map'?'block':'none';
+ $('view-super').style.display=v==='super'?'block':'none';
+ if(v==='super')updateDynamic();else invalidateMapSize();}
+$('btnGoMap').onclick=()=>showView('map');
+document.querySelectorAll('.tabbtn').forEach(b=>b.addEventListener('click',()=>{
+ document.querySelectorAll('.tabbtn').forEach(x=>x.classList.remove('active'));
+ document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+ b.classList.add('active');$('tab-'+b.dataset.t).classList.add('active');
+ if(b.dataset.t==='stats')renderStats();if(b.dataset.t==='mejoras')renderUps();}));
+$('btnPause').onclick=()=>{S.paused=!S.paused;$('btnPause').textContent=S.paused?'▶️':'⏸️';};
+$('btnSpeed').onclick=()=>{S.speed=S.speed===1?2:S.speed===2?3:1;$('btnSpeed').textContent='⏩×'+S.speed;};
+$('btnSound').onclick=()=>{S.muted=!S.muted;$('btnSound').textContent=S.muted?'🔇':'🔊';};
+$('btnSave').onclick=()=>{save();toast('💾 Guardado.');};
+$('btnReset').onclick=()=>{if(confirm('¿Borrar partida y empezar de cero?')){localStorage.removeItem(KEY);location.reload();}};
+$('storeName').onclick=()=>{const n=prompt('Nombre del súper:',S.name);if(n){S.name=n.toUpperCase().trim();updateHUD();save();}};
+$('btnNextDay').onclick=nextDay;
+$('shelflist').addEventListener('click',e=>{const d=e.target.closest('[data-pd]'),u=e.target.closest('[data-pu]');
+ if(d)adjPrice(+d.dataset.pd,-1);if(u)adjPrice(+u.dataset.pu,1);});
+document.querySelectorAll('.stratbtn').forEach(b=>b.addEventListener('click',()=>setAll(+b.dataset.m)));
+(function(){const qc=$('qchips');
+ [10,50,200,500].forEach(q=>{const b=document.createElement('button');b.className='qchip'+(q===buyQty?' sel':'');
+  b.textContent='×'+q;b.onclick=()=>{buyQty=q;qc.querySelectorAll('.qchip').forEach(x=>x.classList.remove('sel'));
+  b.classList.add('sel');renderMarket();};qc.appendChild(b);});
+ const cc=$('catchips');const all=document.createElement('button');all.className='cchip sel';all.textContent='🛍️ Todo';
+ all.onclick=()=>{curCat='ALL';cc.querySelectorAll('.cchip').forEach(x=>x.classList.remove('sel'));all.classList.add('sel');renderMarket();};
+ cc.appendChild(all);
+ for(const [id,nm,em] of CATS){const b=document.createElement('button');b.className='cchip';b.textContent=`${em} ${nm}`;
+  b.onclick=()=>{curCat=id;cc.querySelectorAll('.cchip').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');renderMarket();};
+  cc.appendChild(b);}})();
+
+
+function logEconomy(kind,text,amount=0,actor='Sistema'){S.econLog=S.econLog||[];S.econLog.unshift({day:S.day,clock:S.clockMin,kind,text,amount,actor});if(S.econLog.length>80)S.econLog.length=80;save();}
+function closeQuickMenu(){$('quickMenu').classList.remove('open');}
+function activateSuperTab(tab){showView('super');document.querySelectorAll('.tabbtn').forEach(x=>x.classList.toggle('active',x.dataset.t===tab));document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.id==='tab-'+tab));if(tab==='stats')renderStats();if(tab==='mejoras')renderUps();if(tab==='estantes')renderShelves();}
+function renderInventory(){
+ const products=Object.entries(S.stock||{}).filter(([,q])=>q>0).map(([id,q])=>{const p=byId[id];return `<div class="inventory-row"><span>${p.emoji} ${p.name}</span><b>${q} uds.</b></div>`}).join('')||'<div class="empty-log">No tienes artículos almacenados. Compra mercancía en Mercado.</div>';
+ const props=(S.properties||[]).map(id=>{const e=START_ESTABLISHMENTS.find(x=>x.id===id);return e?`<div class="inventory-row"><span>${e.emoji} ${e.name}</span><b>Propio</b></div>`:''}).join('')||'<div class="empty-log">Todavía no tienes establecimientos propios.</div>';
+ const homes=Object.entries(S.houseUp||{}).filter(([,v])=>v).map(([k])=>`<div class="inventory-row"><span>🏠 Mejora: ${k}</span><b>Instalada</b></div>`).join('')||'<div class="empty-log">No hay mejoras de vivienda.</div>';
+ const buildings = Object.entries(S.landBuildings||{}).filter(([,q])=>q>0).map(([id,q])=>{
+   const b=landById[id];
+   if(!b) return '';
+   const availableNodes = NODOS_LIBRES.filter(n=>
+     S.ownedNodes && S.ownedNodes[n.id] &&
+     !S.nodes[n.id]?.buildingId &&
+     n.type===b.type
+   );
+   const canPlace = availableNodes.length>0;
+   return `<div class="inventory-row"><span>${LAND_ICONS[b.type]||'🏗️'} ${b.name}</span><b>${q}×</b>
+     ${canPlace?`<button class="btn mini2" data-place-building="${id}">Colocar</button>`:'<span style="font-size:.7rem;color:#999">Sin nodo disponible</span>'}</div>`;
+ }).join('')||'<div class="empty-log">No has comprado ningún terreno o edificio en el mercado.</div>';
+ const ownNodes = NODOS_LIBRES.filter(n=>S.ownedNodes && S.ownedNodes[n.id]);
+ const rentedNodes = NODOS_LIBRES.filter(n=>S.rentedNodes && S.rentedNodes[n.id]);
+ const nodeList = ownNodes.map(n=>{
+   const occupied = S.nodes && S.nodes[n.id] && S.nodes[n.id].buildingId;
+   const b = occupied ? landById[S.nodes[n.id].buildingId] : null;
+   return `<div class="inventory-row"><span>${NODE_ICONS[n.type]||'📌'} ${n.name}</span>
+     <span>${occupied?'🏗️ '+b?.name:'Vacío'}</span>
+     <button class="btn mini2" data-node-info="${n.id}">Ver</button></div>`;
+ }).join('')||'<div class="empty-log">No tienes nodos propios.</div>';
+ const rentedList = rentedNodes.map(n=>{
+   return `<div class="inventory-row"><span>${NODE_ICONS[n.type]||'📌'} ${n.name}</span>
+     <span>🟡 Alquilado</span>
+     <button class="btn mini2" data-node-info="${n.id}">Ver</button></div>`;
+ }).join('')||'<div class="empty-log">No tienes nodos alquilados.</div>';
+
+ const hasSuper=(S.properties||[]).some(id=>id==='est09');
+ $('inventoryCard').innerHTML=`<button class="btn ghost" data-close-inventory>✕ Cerrar</button>
+ <h2 style="margin-top:8px">🎒 Inventario</h2>
+ <p class="origin-detail">Tus artículos, edificios, locales, mejoras y actividad. Cartera: <b>${fmt$(S.wallet)}</b>${hasSuper?` · Caja del súper: <b>${fmt$(S.cash)}</b>`:` · Caja del súper: <b>Bloqueada</b> (adquiere un supermercado)`}</p>
+ <div class="inventory-actions"><button class="btn" data-inventory-tab="mejoras">🛠️ Mejoras</button><button class="btn" data-inventory-tab="stats">📊 Oficina</button>${hasSuper?'<button class="btn grn" data-inventory-tab="estantes">🗄️ Estantes</button><button class="btn" data-open-supermarket>🏪 SUPERGANGA</button>':''}</div>
+ <div class="inventory-grid">
+  <section class="inventory-card"><h3>🛒 Artículos comprados</h3>${products}</section>
+  <section class="inventory-card"><h3>🏢 Establecimientos</h3>${props}</section>
+  <section class="inventory-card"><h3>🏗️ Terrenos y edificios (${Object.values(S.landBuildings||{}).reduce((a,b)=>a+b,0)})</h3>${buildings}</section>
+  <section class="inventory-card"><h3>🏠 Casas y mejoras</h3>${homes}</section>
+  <section class="inventory-card"><h3>🟩 Nodos propios (${ownNodes.length})</h3>${nodeList}</section>
+  <section class="inventory-card"><h3>🟡 Nodos alquilados (${rentedNodes.length})</h3>${rentedList}</section>
+  <section class="inventory-card"><h3>📦 Resumen del negocio</h3><div class="inventory-row"><span>Stock total</span><b>${totalStock()} uds.</b></div><div class="inventory-row"><span>Capacidad</span><b>${cap()} uds.</b></div><div class="inventory-row"><span>Nivel</span><b>${S.level}</b></div><div class="inventory-row"><span>Reputación</span><b>${S.rep.toFixed(1)}/5</b></div></section>
+ </div>`;
+ $('modal-inventory').classList.add('open');
+}
+$('inventoryCard').addEventListener('click',e=>{
+ if(e.target.closest('[data-close-inventory]')){$('modal-inventory').classList.remove('open');return;}
+ const b=e.target.closest('[data-inventory-tab]');
+ if(b){$('modal-inventory').classList.remove('open');activateSuperTab(b.dataset.inventoryTab);return;}
+ if(e.target.closest('[data-open-supermarket]')){$('modal-inventory').classList.remove('open');activateSuperTab('mercado');return;}
+ if(e.target.closest('[data-place-building]')){
+   const id=e.target.closest('[data-place-building]').dataset.placeBuilding;
+   const b=landById[id];
+   if(!b) return;
+   const availableNodes = NODOS_LIBRES.filter(n=>
+     S.ownedNodes && S.ownedNodes[n.id] &&
+     !S.nodes[n.id]?.buildingId &&
+     n.type===b.type
+   );
+   if(availableNodes.length===0){toast('No hay nodos libres del tipo '+translateType(b.type));return;}
+   const sub = document.createElement('div');
+   sub.className='mcard wide';
+   sub.style.maxWidth='500px';
+   sub.innerHTML=`<h2>🏗️ Colocar ${b.name}</h2><p>Elige un nodo de tipo <b>${translateType(b.type)}</b> libre:</p>
+     ${availableNodes.map(n=>`<button class="btn" data-place-now="${n.id}" style="width:100%;margin-bottom:6px;text-align:left">${NODE_ICONS[n.type]||''} ${n.name}</button>`).join('')}
+     <button class="btn ghost" data-cancel-place2>Cancelar</button>`;
+   const modal = document.createElement('div');
+   modal.className='modal open nested-modal';
+   modal.style.display='flex';
+   modal.appendChild(sub);
+   document.body.appendChild(modal);
+   sub.querySelector('[data-cancel-place2]')?.addEventListener('click',()=>modal.remove());
+   sub.querySelectorAll('[data-place-now]').forEach(btn=>{
+     btn.addEventListener('click',()=>{
+       const nodeId=btn.dataset.placeNow;
+       S.landBuildings[id]--;
+       if(S.landBuildings[id]<=0) delete S.landBuildings[id];
+       S.nodes[nodeId].buildingId = id;
+       feed(`🏗️ ${b.name} colocado en ${NODOS_LIBRES.find(n=>n.id===nodeId).name}`,'good');
+       modal.remove();
+       $('modal-inventory').classList.remove('open');
+       drawNodes(); updateHUD(); save(); toast('✅ Edificio colocado.');
+     });
+   });
+   return;
+ }
+ if(e.target.closest('[data-node-info]')){
+   const nodeId=e.target.closest('[data-node-info]').dataset.nodeInfo;
+   $('modal-inventory').classList.remove('open');
+   openPanel('node', nodeId);
+ }
+});
+function renderEconomy(){const logs=(S.econLog||[]).map(x=>`<div class="economy-item"><span class="kind">Día ${x.day}<br>${String(Math.floor(x.clock/60)).padStart(2,'0')}:${String(x.clock%60).padStart(2,'0')}</span><span><b>${x.actor||'Sistema'}</b> · ${x.text}</span><span class="amount">${x.amount?fmt$(x.amount):'—'}</span></div>`).join('')||'<div class="empty-log">Todavía no hay interacciones registradas.</div>';$('economyCard').innerHTML=`<button class="btn ghost" data-close-economy>✕ Cerrar</button><h2 style="margin-top:8px">📊 Economía</h2><p class="origin-detail">Historial de operaciones con otros jugadores, CPU y vecinos: compraventas, impuestos, rentas, préstamos, salarios y contratos.</p><div class="economy-log">${logs}</div>`;$('modal-economy').classList.add('open');}
+$('btnHamburger').addEventListener('click',e=>{e.stopPropagation();$('quickMenu').classList.toggle('open');});$('menuMarket').addEventListener('click',()=>{closeQuickMenu();showView('super');openBroker();});$('menuInventory').addEventListener('click',()=>{closeQuickMenu();renderInventory();});$('menuEconomy').addEventListener('click',()=>{closeQuickMenu();renderEconomy();});$('economyCard').addEventListener('click',e=>{if(e.target.closest('[data-close-economy]'))$('modal-economy').classList.remove('open');});document.addEventListener('click',e=>{if(!e.target.closest('.menu-float'))closeQuickMenu();});
+/* ================= INTRO ================= */
+const INTRO_FLAVORS=[
+ '🌅 Valencia te espera: recorre el mapa, descubre sus barrios y convierte cada local en una oportunidad para hacer crecer tu negocio.',
+ '🏛️ Desde la Plaza del Ayuntamiento hasta el Mercado Central, cada edificio puede esconder una operación, un contrato o una nueva estrategia.',
+ '🌊 Acércate a la Malvarrosa, visita Casa Carmela y observa cómo la vida de Valencia influye en tus clientes, tus ventas y tu reputación.',
+ '🚲 Explora Ruzafa, El Carmen, Benimaclet y Campanar: conoce a tus vecinos y decide en qué parte de la ciudad quieres construir tu imperio.',
+ '🍊 Valencia no es solo un mapa: sus comercios, bares, fábricas y casas forman una red de relaciones que puedes aprovechar para progresar.',
+ '🤝 Habla con los vecinos, negocia en el Mercado broker y descubre cómo tus decisiones cambian la confianza que el barrio tiene en ti.',
+ '🏪 Cada establecimiento cuenta una historia. Visítalo, pulsa sobre él y elige si quieres comprar, vender, trabajar, invertir o colaborar.',
+ '☀️ Organiza tu ruta por la ciudad, administra tus euros y transforma una buena oportunidad en el supermercado más querido de Valencia.'
+];
+(function randomIntro(){const e=$('valenciaMessage');if(e)e.textContent=rnd(INTRO_FLAVORS);})();
+
+const hasSave=!!localStorage.getItem(KEY);
+if(hasSave){const extra=document.createElement('button');extra.className='btn ghost';extra.style.width='100%';
+ extra.style.marginTop='10px';extra.textContent='📂 Continuar última partida';
+ extra.onclick=()=>{load();S.startProperties=[];S.properties=S.properties||[];S.started=true;S.paused=false;$('topbar').style.display='flex';
+  $('tbMode').textContent=S.mode==='online'?'🌐 Sala: '+S.room:'🤖 Offline';
+  dispCash=S.cash;dispWallet=S.wallet;$('modal-intro').classList.remove('open');
+  if(S.mode==='online'){
+   if(FB_OK){$('waitRoomCode').textContent=S.room;renderFriends('friendsListWait');$('modal-waiting').classList.add('open');}
+   goOnline(S.room);
+  }
+  buildMap();renderMarket();renderShelves();renderUps();renderHouses();updateHUD();showView('map');};
+ $('modal-intro').querySelector('.mcard').appendChild(extra);}
+function begin(mode){
+ const originId=S.backgroundChoice||'lottery';const picked=[...(S.startProperties||[])];const spent=picked.reduce((n,id)=>n+(START_ESTABLISHMENTS.find(x=>x.id===id)?.cost||0),0);
+ if(picked.length>3||spent>(ORIGINS[originId]||ORIGINS.lottery).wallet){toast('⚠️ Revisa el presupuesto inicial y elige hasta 3 establecimientos.');return;}
+ S=fresh();applyOrigin(originId);S.pname=($('introName').value.trim()||'Alex').toUpperCase();S.properties=picked;S.wallet-=spent;
+ fluct();S.started=true;S.paused=false;$('topbar').style.display='flex';
+ dispCash=S.cash;dispWallet=S.wallet;
+ $('modal-intro').classList.remove('open');
+ renderMarket();renderShelves();renderUps();renderHouses();updateHUD();showView('map');
+ addChat('SISTEMA','📻','¡Bienvenido al barrio, '+S.pname+'! El reloj va en hora real (24 h).');
+ if(mode==='online'){
+  const room=$('introRoom').value.trim()||'barrio-1';
+  if(FB_OK){$('waitRoomCode').textContent=room;renderFriends('friendsListWait');$('modal-waiting').classList.add('open');}
+  goOnline(room);
+ } else $('tbMode').textContent='🤖 Offline vs CPU';
+ save();}
+$('btnOffline').onclick=()=>begin('cpu');
+$('btnOnline').onclick=()=>begin('online');
+
+/* ================= BUCLES ================= */
+setInterval(()=>{if(!S.started||S.paused)return;
+ for(let i=0;i<S.speed;i++){if(S.paused)break;tickOnce();}},700);
+setInterval(()=>{if(S.started&&!S.paused)botTick();},9000);
+setInterval(()=>{if(S.started)save();},20000);
+setInterval(()=>{if(S.started&&S.mode==='online')updateWaitingUI();},5000);
+window.addEventListener('beforeunload',()=>{if(S.started)save();});
+S.backgroundChoice=S.backgroundChoice||'lottery';renderOrigins();renderStartEstablishments();buildMap();renderMarket();renderHouses();updateHUD();showView('map');
+</script>
+</body>
+</html>
