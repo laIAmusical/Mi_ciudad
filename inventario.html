@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SuperGanga Tycoon — Inventario</title>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow+Semi+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f2f22;--paper:#fdf7ea;--paper2:#f2e7cd;--ink:#26221c;--red:#d93a2b;--red2:#a92417;
+--yellow:#ffcf3f;--green:#3ecf6f;--line:#e2d4b2;--shadow:#1e1a17}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Barlow Semi Condensed',sans-serif;color:var(--ink);background:
+ radial-gradient(1200px 500px at 50% -10%,#1b4a35 0%,transparent 60%),
+ repeating-linear-gradient(45deg,rgba(255,255,255,.015) 0 2px,transparent 2px 26px),var(--bg);
+ min-height:100vh;overflow-x:hidden}
+.num{font-variant-numeric:tabular-nums}button{font-family:inherit;cursor:pointer;user-select:none}
+.btn{border:2px solid var(--shadow);border-radius:8px;padding:6px 12px;font-weight:700;font-size:.88rem;
+ box-shadow:0 3px 0 var(--shadow);transition:transform .1s;background:var(--yellow)}
+.btn:hover{transform:translateY(-2px)}.btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--shadow)}
+.btn.red{background:var(--red);color:#fff}.btn.ghost{background:#fff}.btn.grn{background:var(--green);color:#fff}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.toast{background:var(--shadow);color:#fff;padding:9px 18px;border-radius:10px;border:2px solid var(--yellow);font-weight:600;animation:pop .25s;max-width:92vw;text-align:center}
+#toasts{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:150;display:flex;flex-direction:column;gap:8px;align-items:center}
+@keyframes pop{from{transform:scale(.7);opacity:0}}
+.topbar{position:sticky;top:0;z-index:60;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;
+ padding:8px 12px;background:linear-gradient(#0c281c,#0a2217);border-bottom:3px solid #1d5a41}
+.chip{background:#12382a;border:2px solid #1d5a41;color:#e9f5ec;border-radius:10px;padding:5px 11px;font-size:.92rem;
+ display:flex;align-items:center;gap:6px;box-shadow:0 3px 0 rgba(0,0,0,.3)}
+.chip b{color:#fff}
+.mini{width:64px;height:9px;background:rgba(0,0,0,.45);border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,.25)}
+.mini i{display:block;height:100%;transition:width .4s}
+#tbEnergy i{background:linear-gradient(90deg,#ffb347,var(--yellow))}
+.mcard{position:relative;z-index:10001;background:var(--paper);border:3px solid var(--shadow);border-radius:14px;max-width:900px;width:100%;padding:22px;
+ box-shadow:0 10px 0 var(--shadow),0 24px 50px rgba(0,0,0,.5);animation:pop .3s;max-height:92vh;overflow-y:auto;margin:20px auto}
+.mcard h2{font-family:'Bungee';color:var(--red);font-size:1.35rem;margin-bottom:8px}
+.mcard p{margin-bottom:8px;line-height:1.35}
+.sect{background:#fff;border:2px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+.sect h4{font-family:'Bungee';font-size:.9rem;color:var(--red);margin-bottom:6px}
+.orow{display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:1px dashed var(--line);padding:6px 0;font-size:.9rem;flex-wrap:wrap}
+.orow:last-child{border:none}
+.empty-log{text-align:center;background:#fff3cd;border:2px dashed #e6b31e;border-radius:9px;padding:16px;color:#6b6250;font-size:.86rem}
+.inventory-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.inventory-card{background:#fff;border:2px solid var(--line);border-radius:10px;padding:10px 12px;min-width:0}
+.inventory-card h3{font-family:'Bungee';color:var(--red);font-size:.85rem;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.inventory-row{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dotted #d8cdb7;padding:5px 0;font-size:.85rem}
+.inventory-row:last-child{border:0}
+.inventory-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.inventory-actions .btn{flex:1 1 140px}
+.origin-detail{background:#fff3cd;border:2px dashed #e6b31e;border-radius:9px;padding:9px 12px;font-size:.85rem;line-height:1.35;margin-bottom:10px}
+.summary-card{grid-column:1/-1}
+.job-card{background:#fff3cd;border:1px dashed #e6b31e;border-radius:8px;padding:8px 10px;margin-bottom:6px}
+.job-card .jt{font-weight:700;font-size:.86rem}
+.job-card .jm{font-size:.76rem;color:#6b6250;margin-top:2px}
+.job-card .js{font-family:'Bungee';font-size:.85rem;color:#1e9e50;margin-top:4px}
+@media(max-width:600px){.inventory-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="chip">💼 Cartera <b class="num" id="tbWallet">€1.000.000</b></div>
+  <div class="chip">⚡ <div class="mini" id="tbEnergy"><i style="width:100%"></i></div></div>
+  <div class="chip"><span id="tbMood">😊</span> Ánimo</div>
+  <div class="chip">📅 Día <b id="tbDay">1</b></div>
+  <div class="chip">🕗 <b id="tbClock">--:--</b></div>
+  <div class="chip" id="tbMode">🤖 Offline</div>
+  <button class="btn ghost" onclick="window.location.href='mi_ciudad.html'">🗺️ Volver al barrio</button>
+</div>
+
+<div class="mcard" id="inventoryCard">
+  <button class="btn ghost" onclick="window.location.href='mi_ciudad.html'" style="margin-bottom:10px">← Volver al barrio</button>
+  <h2 style="margin-top:8px">🎒 Inventario</h2>
+  <p class="origin-detail" id="inventorySummary">Cargando...</p>
+  <div class="inventory-actions">
+    <button class="btn" onclick="window.location.href='mi_ciudad.html'">🛠️ Mejoras</button>
+    <button class="btn" onclick="window.location.href='mi_ciudad.html'">📊 Oficina</button>
+  </div>
+  <div class="inventory-grid" id="inventoryGrid"></div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+const KEY='superTycoonV2';
+function loadState(){
+ try{const d=JSON.parse(localStorage.getItem(KEY));return d;}catch(e){return null;}
+}
+let S=loadState()||{};
+if(!S||S.started!==true||S.setupComplete!==true){
+ window.location.replace('mi_ciudad.html');
+ throw new Error('No hay partida iniciada. Empieza una partida en mi_ciudad.html.');
+}
+
+// Helpers
+const $=id=>document.getElementById(id);
+const fmt$=n=>'€'+(n||0).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtI=n=>Math.round(n).toLocaleString('es-ES');
+
+// Datos necesarios (copiados de mi_ciudad.html)
+const START_ESTABLISHMENTS = [
+ {id:'est01',name:'Mercado Central',emoji:'🏛️',type:'Mercado',cost:180000,lat:39.4736,lng:-0.3788},
+ {id:'est02',name:'Mercado de Ruzafa',emoji:'🏛️',type:'Mercado',cost:150000,lat:39.4611,lng:-0.3757},
+ {id:'est03',name:'Mercado de Campanar',emoji:'🏛️',type:'Mercado',cost:160000,lat:39.4775,lng:-0.3956},
+ {id:'est04',name:'Frutería Ruzafa',emoji:'🍎',type:'Frutería',cost:110000,lat:39.4618,lng:-0.3740},
+ {id:'est05',name:'Panadería del Carmen',emoji:'🥖',type:'Panadería',cost:120000,lat:39.4772,lng:-0.3789},
+ {id:'est06',name:'Carnicería Mercado Central',emoji:'🥩',type:'Carnicería',cost:210000,lat:39.4734,lng:-0.3791},
+ {id:'est07',name:'Pescadería Cabanyal',emoji:'🐟',type:'Pescadería',cost:220000,lat:39.4632,lng:-0.3318},
+ {id:'est08',name:'Lechería Mercado Central',emoji:'🧀',type:'Lácteos',cost:195000,lat:39.4737,lng:-0.3785},
+ {id:'est09',name:'Conservas Mercado Central',emoji:'🥫',type:'Despensa',cost:145000,lat:39.4746,lng:-0.3785},
+ {id:'est10',name:'Congelados del Puerto',emoji:'🧊',type:'Congelados',cost:200000,lat:39.4595,lng:-0.3470},
+ {id:'est11',name:'Charcutería Campanar',emoji:'🥓',type:'Carnicería',cost:150000,lat:39.4778,lng:-0.3950},
+ {id:'est12',name:'Horchatería Santa Catalina',emoji:'🍺',type:'Ocio y chismes',cost:180000,lat:39.47388,lng:-0.37606},
+ {id:'est13',name:'Casa Carmela',emoji:'🍽️',type:'Restaurante',cost:320000,lat:39.4762,lng:-0.3236},
+ {id:'est14',name:'Cafetería Colón',emoji:'☕',type:'Café',cost:160000,lat:39.4671,lng:-0.3699},
+ {id:'est15',name:'Bodega del Carmen',emoji:'🍷',type:'Bebidas',cost:180000,lat:39.4783,lng:-0.3798},
+ {id:'est16',name:'Dulces de Valencia',emoji:'🍫',type:'Dulces',cost:130000,lat:39.4690,lng:-0.3770},
+ {id:'est17',name:'Tapería Ruzafa',emoji:'🍤',type:'Restaurante',cost:280000,lat:39.4615,lng:-0.3750},
+ {id:'est18',name:'Churrería Campanar',emoji:'🥨',type:'Dulces',cost:95000,lat:39.4770,lng:-0.3940},
+ {id:'est19',name:'Zara Calle Colón',emoji:'👗',type:'Ropa',cost:280000,lat:39.4682,lng:-0.3729},
+ {id:'est20',name:'H&M Calle Colón',emoji:'🧥',type:'Ropa',cost:210000,lat:39.4686,lng:-0.3719},
+ {id:'est21',name:'Pull&Bear Calle Colón',emoji:'👕',type:'Ropa',cost:175000,lat:39.4678,lng:-0.3732},
+ {id:'est22',name:'Nike Store Xàtiva',emoji:'👟',type:'Ropa deportiva',cost:225000,lat:39.4664,lng:-0.3777},
+ {id:'est23',name:'Lefties Calle Colón',emoji:'👚',type:'Ropa',cost:165000,lat:39.4680,lng:-0.3725},
+ {id:'est24',name:'Tienda Gourmet Ruzafa',emoji:'🍾',type:'Gourmet',cost:420000,lat:39.4618,lng:-0.3740},
+ {id:'est25',name:'Mascotas Mestalla',emoji:'🐶',type:'Mascotas',cost:190000,lat:39.4740,lng:-0.3580},
+ {id:'est26',name:'Tienda Bebé Aragón',emoji:'🍼',type:'Bebés',cost:230000,lat:39.4720,lng:-0.3610},
+ {id:'est27',name:'Limpiezas Turia',emoji:'🧴',type:'Limpieza',cost:150000,lat:39.4705,lng:-0.3860},
+ {id:'est28',name:'Kiosco Malvarrosa',emoji:'📰',type:'Kiosco',cost:85000,lat:39.4720,lng:-0.3280},
+ {id:'est29',name:'Estación de servicio Repsol',emoji:'⛽',type:'Gasolinera',cost:260000,lat:39.4791,lng:-0.3615},
+ {id:'est30',name:'MediaMarkt Colón',emoji:'📱',type:'Electrónica',cost:360000,lat:39.4693,lng:-0.3735},
+ {id:'est31',name:'El Corte Inglés Pintor Sorolla',emoji:'🏬',type:'Grandes almacenes',cost:520000,lat:39.4695,lng:-0.3741},
+ {id:'est32',name:'Bowling Valencia',emoji:'🎳',type:'Ocio y entretenimiento',cost:275000,lat:39.4790,lng:-0.3982},
+ {id:'est33',name:'Cosmic Bowling',emoji:'🕹️',type:'Ocio y entretenimiento',cost:235000,lat:39.4568,lng:-0.3812},
+ {id:'est34',name:'Jardines Viveros',emoji:'🌳',type:'Parque',cost:150000,lat:39.4805,lng:-0.3677},
+ {id:'est35',name:'Parque Gulliver',emoji:'🎡',type:'Parque y ocio',cost:165000,lat:39.4625,lng:-0.3600},
+ {id:'est36',name:'Decathlon City Valencia',emoji:'🏸',type:'Deporte',cost:310000,lat:39.4776,lng:-0.3958},
+ {id:'est37',name:'Estación de Autobuses',emoji:'🚌',type:'Transporte',cost:200000,lat:39.4658,lng:-0.3795},
+ {id:'est38',name:'Estación del Norte',emoji:'🚉',type:'Transporte',cost:300000,lat:39.4695,lng:-0.3765}
+];
+const byId = {};
+// Productos básicos para mostrar
+const CATS=[['F','Frutería','🍎'],['V','Verdulería','🥕'],['L','Lácteos y huevos','🥛'],['C','Carnicería','🥩'],
+['X','Pescadería','🐟'],['P','Panadería','🥖'],['B','Bebidas','🥤'],['S','Snacks','🥨'],['D','Dulces','🍫'],
+['N','Despensa','🥫'],['M','Desayuno','☕'],['Z','Congelados','🧊'],['H','Limpieza','🧴'],
+['A','Cuidado personal','🪥'],['T','Mascotas','🐶'],['Y','Bebés','🍼'],['G','Gourmet','🍾']];
+const CATNAME=Object.fromEntries(CATS.map(c=>[c[0],c[1]]));
+const RAW={
+F:[['🍎','Manzana',.6],['🍌','Plátano de Canarias',.5],['🍊','Naranja',.5],['🍐','Pera',.7],['🍇','Uvas',1.4],['🍓','Fresas',1.8],['🍉','Sandía',2.2],['🍈','Melón',1.9],['🍍','Piña',1.7],['🥭','Mango',1.5],['🥑','Aguacate',1.9],['🍋','Limón',.6],['🍑','Melocotón',1.1],['🥝','Kiwi',1.2],['🍒','Cerezas',2.6],['🫐','Arándanos',2.8],['🥥','Coco',1.6]],
+V:[['🥕','Zanahoria (1 kg)',.4],['🍅','Tomate (1 kg)',.6],['🥔','Patatas (1 kg)',.35],['🧅','Cebolla (1 kg)',.4],['🥬','Lechuga',.7],['🥦','Brócoli',1],['🌽','Mazorca de maíz',.8],['🥒','Pepino',.6],['🫑','Pimiento',.9],['🍆','Berenjena',.8],['🥐','Calabacín',.7],['🧄','Ajo',.5],['🍄','Champiñones',1.1],['🎃','Calabaza',.9],['🫛','Guisantes',1]],
+L:[['🥛','Leche entera',.9],['🥛','Leche sin lactosa',1.3],['🧀','Queso curado',2.8],['🧀','Queso fresco',2.2],['🧀','Queso rallado',1.9],['🥣','Yogur natural',.7],['🥣','Yogur de sabores',.9],['🧈','Mantequilla',1.8],['🍶','Nata para cocinar',1.2],['🥚','Huevos (docena)',1.6],['🍮','Flan',1],['🍦','Helado tarrina',2.9]],
+C:[['🍗','Pollo entero',3.2],['🍗','Pechuga de pollo',3.8],['🥩','Ternera',5.5],['🥩','Chuletas de cerdo',4.2],['🥓','Bacon',2.9],['🌭','Salchichas',2.4],['🍖','Costillas',4.6],['🥩','Carne picada',3.9],['🦃','Pavo',3.6],['🍗','Alitas de pollo',2.8],['🥓','Jamón serrano',6.8],['🍖','Chorizo',2.6],['🥩','Chuletón de vaca',7.9],['🥩','Morcilla',2.2]],
+X:[['🐟','Merluza',4.8],['🐟','Salmón',6.2],['🦐','Gambas',5.6],['🐟','Sardinas',2.9],['🦑','Calamares',4.4],['🐟','Atún fresco',5.9],['🦪','Mejillones',3.4],['🐙','Pulpo',7.4],['🐟','Trucha',4.1]],
+P:[['🥖','Baguette',.8],['🍞','Pan de molde',1.2],['🥐','Croissant',.9],['🥯','Bagel',1],['🍩','Dónut',1.1],['🧁','Magdalena',.8],['🥧','Tarta de manzana',3.5],['🍪','Galletas caseras',1.6],['🥨','Pretzel',.9],['🍰','Tarta de chocolate',4.2],['🍞','Pan integral',1.4],['🥖','Chapata',.7]],
+B:[['💧','Agua mineral 1,5 L',.5],['🥤','Refresco de cola',1.1],['🥤','Refresco de naranja',1],['🧃','Zumo de naranja',1.4],['🧃','Zumo multifrutas',1.5],['🍺','Cerveza',1.3],['🍺','Cerveza artesana',2.4],['🍷','Vino tinto',4.5],['🍾','Cava',5.8],['☕','Café molido',3.2],['🍵','Té verde',2.1],['⚡','Bebida energética',1.7],['🥥','Agua de coco',1.9],['🍶','Kombucha',2.6],['🍋','Limonada',1.3]],
+S:[['🥔','Patatas fritas',1.2],['🍿','Palomitas',1],['🥜','Cacahuetes',1.1],['🥜','Almendras',2.2],['🌰','Mix de frutos secos',2.6],['🍿','Maíz para palomitas',.9],['🥖','Colines',.8],['🧀','Nachos',1.5],['🫒','Aceitunas',1.2],['🥜','Pistachos',2.9],['🧀','Snacks de queso',1.3],['🍫','Barritas de cereales',1.7]],
+D:[['🍫','Tableta de chocolate',1.3],['🍫','Chocolate con almendras',1.7],['🍬','Caramelos',.9],['🍭','Piruletas',.7],['🍬','Regaliz',.8],['🍬','Gominolas',1.1],['🍪','Galletas de chocolate',1.4],['🍪','Galletas rellenas',1.6],['🍩','Bollería industrial',1.5],['🍫','Cacao en polvo',2],['🍬','Chicles',.6],['🍮','Natillas',1.1]],
+N:[['🍚','Arroz (1 kg)',1],['🍝','Espaguetis',.9],['🍜','Fideos',.8],['🫙','Tomate frito',1.1],['🥫','Atún en lata',1.4],['🫘','Alubias',1],['🫘','Lentejas',1],['🫘','Garbanzos',1],['🫒','Aceite de oliva',4.2],['🌻','Aceite de girasol',2.6],['🧂','Sal',.5],['🍯','Miel',2.8],['🌶️','Especias',1.2],['🍶','Vinagre',1.1],['🥫','Conservas de verduras',1.3]],
+M:[['☕','Cacao soluble',2.4],['🥣','Cereales de desayuno',2.2],['🥣','Cereales infantiles',2.6],['🍞','Biscotes',1.3],['🍓','Mermelada',1.7],['🧈','Margarina',1.5],['🍫','Crema de cacao',2.7],['🥛','Leche de avena',1.8],['🍵','Té en bolsitas',1.9],['🍪','Galletas María',1.1],['🧇','Gofres',1.8]],
+Z:[['🍕','Pizza congelada',2.8],['🥟','Empanadillas',2.2],['🍤','Langostinos congelados',4.9],['🥦','Verduras congeladas',1.6],['🍟','Patatas congeladas',1.8],['🍦','Helado familiar',3.6],['🧊','Hielo (bolsa)',.8],['🍗','Nuggets',2.7],['🐟','Palitos de pescado',2.5],['🥟','Croquetas',2.3]],
+H:[['🧴','Detergente líquido',3.4],['🧺','Cápsulas lavadora',4.6],['🧼','Lavavajillas',1.6],['🧽','Estropajos',1],['🧻','Papel higiénico (12 rollos)',3.8],['🧻','Papel de cocina',2.2],['🧴','Lejía',1.3],['🧴','Limpiasuelos',2],['🧴','Limpia cristales',1.8],['🗑️','Bolsas de basura',1.7],['🧴','Suavizante',2.4],['🌸','Ambientador',2.1]],
+A:[['🧴','Champú',2.6],['🧴','Gel de ducha',2],['🧼','Pastilla de jabón',.9],['🪥','Pasta de dientes',1.7],['🪥','Cepillo de dientes',1.4],['🧴','Desodorante',2.3],['🧻','Pañuelos',1.1],['🧴','Crema hidratante',3.1],['🧴','Protector solar',4.8],['🪒','Cuchillas de afeitar',3.9],['🧴','Laca',2.5],['🦷','Hilo dental',1.2]],
+T:[['🐶','Pienso para perro',3.8],['🐱','Pienso para gato',3.4],['🦴','Snacks para perro',1.8],['🐾','Arena para gato',3.2],['🐠','Comida para peces',1.4],['🐹','Pienso para roedores',1.6],['🦮','Collar',2.9],['🧸','Juguete para mascota',2.4]],
+Y:[['🍼','Leche infantil',6.5],['🥣','Papillas',2.4],['🧷','Pañales',5.2],['🧻','Toallitas',2.1],['🥣','Potitos',1.6]],
+G:[['🧀','Queso manchego',6.5],['🥩','Solomillo',8.9],['🍾','Champán',12],['🐟','Caviar',15],['🍤','Bogavante',12.5],['🫒','Aceite de trufa',7.8],['🍫','Chocolate belga',4.9],['🧀','Parmesano',5.6],['🍷','Vino reserva',8.5],['🥓','Jamón ibérico',12.8]]};
+(function(){let id=0;for(const [cat] of CATS)for(const [e,n,c] of RAW[cat]){
+ byId[id]={id:id++,emoji:e,name:n,cost:c,cat,pop:5,unlock:1,fair:c*1.55};}})();
+
+// Terrenos y edificios (para nombrar lo comprado)
+const LAND_BUILDINGS_NAMES={lb01:'Terreno Básico',lb02:'Edificio Residencial Pequeño',lb03:'Granja de Cultivos',lb04:'Aserradero',lb05:'Mina de Carbón',lb06:'Fábrica de Herramientas',lb07:'Edificio Comercial',lb08:'Parque Pequeño',lb09:'Estación de Bomberos',lb10:'Comisaría de Policía',lb11:'Hospital Básico',lb12:'Escuela Primaria',lb13:'Planta de Tratamiento de Agua',lb14:'Planta de Energía Solar',lb15:'Rascacielos Residencial',lb16:'Centro Comercial',lb17:'Puerto Comercial',lb18:'Aeropuerto',lb19:'Universidad',lb20:'Estadio Deportivo'};
+function landName(id){return LAND_BUILDINGS_NAMES[id]||id;}
+
+// Nombres de mejoras del hogar
+const HOUSE_UP_NAMES={sofa:'🛋️ Sofá nuevo',cocina:'🍳 Cocina equipada',jardin:'🌷 Jardín'};
+
+function updateHUD(){
+ if(!S || !S.wallet) return;
+ document.getElementById('tbWallet').textContent='€'+S.wallet.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
+ document.getElementById('tbEnergy').firstElementChild.style.width=(S.energy||100)+'%';
+ document.getElementById('tbMood').textContent=(S.mood||70)>=80?'😄':(S.mood||70)>=55?'😊':(S.mood||70)>=30?'😐':(S.mood||70)>=15?'😟':'😭';
+ document.getElementById('tbDay').textContent=S.day||1;
+ const h=Math.floor((S.clockMin||0)/60),m=(S.clockMin||0)%60;
+ document.getElementById('tbClock').textContent=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+ document.getElementById('tbMode').textContent=S.mode==='online'?'🌐 Online':'🤖 Offline';
+}
+
+function renderInventory(){
+ const products=Object.entries(S.stock||{}).filter(([,q])=>q>0).map(([id,q])=>{
+   const p=byId[id]; if(!p) return '';
+   return `<div class="inventory-row"><span>${p.emoji} ${p.name}</span><b>${q} uds.</b></div>`;
+ }).join('')||'<div class="empty-log">No tienes artículos almacenados. Compra mercancía en Mercado.</div>';
+
+ const props=(S.properties||[]).map(id=>{
+   const e=START_ESTABLISHMENTS.find(x=>x.id===id);
+   return e?`<div class="inventory-row"><span>${e.emoji} ${e.name}</span><b>Propio</b></div>`:'';
+ }).join('')||'<div class="empty-log">Todavía no tienes establecimientos propios.</div>';
+
+ const landEntries=Object.entries(S.landBuildings||{}).filter(([,q])=>q>0);
+ const lands=landEntries.map(([id,q])=>`<div class="inventory-row"><span>🏗️ ${landName(id)}</span><b>${q} uds.</b></div>`)
+   .join('')||'<div class="empty-log">No has comprado ningún terreno o edificio en el mercado.</div>';
+ const landCount=landEntries.reduce((a,[,q])=>a+q,0);
+
+ const homes=Object.entries(S.houseUp||{}).filter(([,v])=>v).map(([k])=>
+   `<div class="inventory-row"><span>${HOUSE_UP_NAMES[k]||('🏠 Mejora: '+k)}</span><b>Instalada</b></div>`
+ ).join('')||'<div class="empty-log">No hay mejoras de vivienda.</div>';
+
+ const ownedNodes=Object.keys(S.ownedNodes||{}).filter(k=>S.ownedNodes[k]);
+ const nodesOwn=ownedNodes.map(id=>`<div class="inventory-row"><span>🟩 Nodo ${id}</span><b>Propio</b></div>`)
+   .join('')||'<div class="empty-log">No tienes nodos propios.</div>';
+
+ const rentedNodes=Object.keys(S.rentedNodes||{}).filter(k=>S.rentedNodes[k]);
+ const nodesRent=rentedNodes.map(id=>`<div class="inventory-row"><span>🟡 Nodo ${id}</span><b>Alquilado</b></div>`)
+   .join('')||'<div class="empty-log">No tienes nodos alquilados.</div>';
+
+ const jobs=(S.jobs||[]);
+ const jobsHtml=jobs.map(j=>`
+   <div class="job-card">
+    <div class="jt">${j.emoji||'💼'} ${j.title}</div>
+    <div class="jm">📍 ${j.place} · empleado desde el día ${j.hiredDay}</div>
+    <div class="jm">Próxima nómina: día ${j.lastPaidDay+30}</div>
+    <div class="js">${fmt$(j.salary)} / mes</div>
+   </div>
+ `).join('')||'<div class="empty-log">No tienes ningún empleo fijo. Firma un contrato de trabajo en un local con 👷.</div>';
+
+ const supplierEntries=Object.entries(S.contracts||{}).filter(([,lv])=>lv>0);
+ const supplierHtml=supplierEntries.map(([cat,lv])=>
+   `<div class="inventory-row"><span>${CATNAME[cat]||cat} — descuento ${6*lv}%</span><b>Nivel ${lv}/3</b></div>`
+ ).join('')||'<div class="empty-log">No has firmado contratos de proveedor.</div>';
+
+ const supplyList=(S.supplyContracts||[]).filter(c=>c.active);
+ const supplyHtml=supplyList.map(c=>
+   `<div class="inventory-row"><span>${c.from} → ${c.to} · ${c.qty} uds · ${fmt$(c.pricePerUnit)}/ud</span><b>${c.daysLeft} días</b></div>`
+ ).join('')||'<div class="empty-log">No hay contratos de suministro activos en la plaza.</div>';
+
+ const vanLv=S.vanLv||0;
+ const vanHtml=vanLv>0
+   ? `<div class="inventory-row"><span>🚚 Furgonetas de reparto</span><b>Nivel ${vanLv}/3</b></div>
+      <div class="inventory-row"><span>⛽ Repostaje de hoy</span><b>${S.fuelToday?'Hecho':'Pendiente'}</b></div>`
+   : '<div class="empty-log">No tienes furgonetas de reparto.</div>';
+
+ const hasSuper=(S.properties||[]).some(id=>id==='est09');
+ document.getElementById('inventorySummary').innerHTML =
+   `Tus artículos, edificios, locales, mejoras y actividad. Cartera: <b>${fmt$(S.wallet||0)}</b> · Caja del súper: ${hasSuper?`<b>${fmt$(S.cash||0)}</b>`:'<b>Bloqueada</b> (adquiere un supermercado)'}`;
+
+ document.getElementById('inventoryGrid').innerHTML = `
+  <section class="inventory-card"><h3>🛒 Artículos comprados</h3>${products}</section>
+  <section class="inventory-card"><h3>📌 Establecimientos</h3>${props}</section>
+  <section class="inventory-card"><h3>💼 Empleos (sueldo mensual)</h3>${jobsHtml}</section>
+  <section class="inventory-card"><h3>🤝 Contratos de proveedor</h3>${supplierHtml}</section>
+  <section class="inventory-card"><h3>📄 Contratos de suministro (plaza)</h3>${supplyHtml}</section>
+  <section class="inventory-card"><h3>🏗️ Terrenos y edificios (${landCount})</h3>${lands}</section>
+  <section class="inventory-card"><h3>🏠 Casas y mejoras</h3>${homes}</section>
+  <section class="inventory-card"><h3>🚚 Flota de reparto</h3>${vanHtml}</section>
+  <section class="inventory-card"><h3>🟩 Nodos propios (${ownedNodes.length})</h3>${nodesOwn}</section>
+  <section class="inventory-card"><h3>🟡 Nodos alquilados (${rentedNodes.length})</h3>${nodesRent}</section>
+  <section class="inventory-card summary-card"><h3>📦 Resumen del negocio</h3>
+   <div class="inventory-row"><span>Stock total</span><b>${Object.values(S.stock||{}).reduce((a,b)=>a+b,0)} uds.</b></div>
+   <div class="inventory-row"><span>Capacidad</span><b>${250+(S.up?.shelf||0)*150+(S.vanLv||0)*40} uds.</b></div>
+   <div class="inventory-row"><span>Nivel</span><b>${S.level||1}</b></div>
+   <div class="inventory-row"><span>Reputación</span><b>${(S.rep||3).toFixed(1)}/5</b></div>
+   <div class="inventory-row"><span>Empleos activos</span><b>${jobs.length}</b></div>
+  </section>
+ `;
+}
+
+setInterval(()=>{S=loadState()||S;updateHUD();renderInventory();},5000);
+updateHUD();renderInventory();
+</script>
+</body>
+</html>
