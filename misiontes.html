@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Misiones de clase</title>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow+Semi+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f2f22;--paper:#fdf7ea;--ink:#26221c;--red:#d93a2b;--red2:#a92417;--yellow:#ffcf3f;--green:#3ecf6f;--line:#e2d4b2;--shadow:#1e1a17}
+*{box-sizing:border-box;margin:0;padding:0}
+body{min-height:100vh;padding:16px;font-family:'Barlow Semi Condensed',sans-serif;color:var(--ink);background:radial-gradient(900px 450px at 50% -8%,#1b4a35 0%,transparent 65%),repeating-linear-gradient(45deg,rgba(255,255,255,.015) 0 2px,transparent 2px 26px),var(--bg)}
+.page{width:min(760px,100%);margin:0 auto}.topbar{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px}.title{font-family:'Bungee';color:var(--yellow);font-size:clamp(1rem,3.5vw,1.5rem);text-shadow:2px 2px 0 var(--red2)}
+.btn{border:2px solid var(--shadow);border-radius:8px;padding:7px 12px;font:700 .95rem 'Barlow Semi Condensed',sans-serif;cursor:pointer;background:var(--yellow);box-shadow:0 3px 0 var(--shadow)}.btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--shadow)}.btn.ghost{background:#fff}.btn.grn{background:var(--green);color:#fff}
+.card{background:var(--paper);border:3px solid var(--shadow);border-radius:16px;padding:24px 24px 20px;box-shadow:0 10px 0 var(--shadow),0 24px 45px rgba(0,0,0,.35)}.hero{display:flex;align-items:center;gap:12px;margin-bottom:10px}.hero-icon{font-size:2.3rem}.card h1{font-family:'Bungee';font-size:clamp(1.25rem,4vw,2rem);color:var(--red);line-height:1.1}.subtitle{font-size:1.2rem;font-weight:700;margin-bottom:12px}.detail{background:#fff3cd;border:2px dashed #e6b31e;border-radius:10px;padding:10px 12px;line-height:1.3;margin-bottom:14px}.section-title{font-size:1.15rem;font-weight:700;margin-bottom:8px}.mission-list{background:#fff;border:2px dashed var(--line);border-radius:10px;padding:10px 14px;list-style:none}.mission{display:flex;align-items:flex-start;gap:9px;padding:8px 2px;border-bottom:1px dashed var(--line);font-size:1.08rem;line-height:1.2}.mission:last-child{border-bottom:0}.mission-icon{flex:0 0 23px;text-align:center}.mission.done{color:#176d36}.mission.done .mission-icon{color:var(--green)}.mission-text{flex:1}.status{font-size:.85rem;font-weight:700;color:#8a7f68;white-space:nowrap}.done .status{color:#1e9e50}.reward{margin-top:14px;background:#eaffef;border:2px solid var(--green);border-radius:10px;padding:10px 12px;font-weight:700}.progress{height:12px;background:#e4d9bd;border:1px solid var(--shadow);border-radius:8px;overflow:hidden;margin-top:7px}.progress i{display:block;height:100%;width:0;background:var(--green);transition:width .25s}.footer{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px;color:#6b6250;font-size:.9rem}.empty{text-align:center;padding:25px 10px;background:#fff;border:2px dashed var(--line);border-radius:10px}
+@media(max-width:520px){body{padding:10px}.card{padding:18px 14px 16px}.topbar{align-items:flex-start}.footer{align-items:stretch;flex-direction:column-reverse}.footer .btn{width:100%}.status{font-size:.76rem}}
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="topbar"><div class="title">🎯 Misiones</div><button class="btn ghost" id="backBtn">🗺️ Volver al barrio</button></div>
+  <section class="card" id="missionCard"><div class="empty">Cargando tus misiones...</div></section>
+</main>
+<script>
+'use strict';
+const SAVE_KEY='superTycoonV2';
+const origins={
+ worker:{icon:'📦',name:'Clase trabajadora',title:'El Soñador del Barrio',desc:'Turnos dobles obligatorios, préstamo bancario y crecimiento progresivo con microcréditos locales.',reward:'5000 € de caja y +0,5 de reputación',missions:[
+  {id:'m1',text:'Consigue un empleo fijo en el barrio',check:s=>(s.jobs||[]).length>0},
+  {id:'m2',text:'Compra un establecimiento de alimentación',check:s=>(s.properties||[]).some(id=>['est04','est05','est06','est07','est08','est09','est10','est11'].includes(id))},
+  {id:'m3',text:'Paga el préstamo bancario al 50%',check:s=>(s.loanBalance||0)<=5000},
+  {id:'m4',text:'Alcanza el nivel 3',check:s=>(s.level||1)>=3}]},
+ lottery:{icon:'🎟️',name:'Ganador de lotería',title:'El Gran Inversor Sin Experiencia',desc:'Gran capacidad de inversión, pero con impuestos patrimoniales, inspecciones y competidores más agresivos.',reward:'5000 € de caja y +0,5 de reputación',missions:[
+  {id:'m1',text:'Compra un establecimiento de lujo (Gourmet o Gran Almacén)',check:s=>(s.properties||[]).some(id=>['est15','est24','est27','est31'].includes(id))},
+  {id:'m2',text:'Mejora el súper al nivel 3 (Cajas, Proveedores o Decoración)',check:s=>((s.up?.reg||0)+(s.up?.sup||0)+(s.up?.deco||0))>=3},
+  {id:'m3',text:'Paga los impuestos patrimoniales dos días seguidos',check:s=>(s.taxPaidCount||0)>=2},
+  {id:'m4',text:'Alcanza el nivel 5',check:s=>(s.level||1)>=5}]},
+ vulnerable:{icon:'✉️',name:'Clase vulnerable',title:'Lucha por Sobrevivir',desc:'Energía máxima reducida, gastos difíciles de cubrir y acceso gradual a ayudas y microcréditos.',reward:'5000 € de caja y +0,5 de reputación',missions:[
+  {id:'m1',text:'Consigue un empleo fijo en el barrio',check:s=>(s.jobs||[]).length>0},
+  {id:'m2',text:'Compra la mejora de cocina para tu casa',check:s=>(s.houseUp?.cocina||0)>0},
+  {id:'m3',text:'Ahorra 5000€ en tu cartera',check:s=>(s.wallet||0)>=5000},
+  {id:'m4',text:'Alcanza el nivel 2',check:s=>(s.level||1)>=2}]}
+};
+function readState(){try{return JSON.parse(localStorage.getItem(SAVE_KEY)||'null')}catch(error){return null}}
+function money(value){return Math.round(value||0).toLocaleString('es-ES')+'€'}
+function render(){
+ const state=readState();const card=document.getElementById('missionCard');
+ if(!state||!state.started){card.innerHTML='<div class="empty"><h2>No hay una partida activa</h2><p style="margin-top:8px">Vuelve al barrio para comenzar una partida.</p></div>';return}
+ const origin=origins[state.background]||origins.lottery;const missions=origin.missions.map(m=>({text:m.text,done:!!m.check(state)}));const completed=missions.filter(m=>m.done).length;const allDone=completed===missions.length;
+ card.innerHTML=`<div class="hero"><span class="hero-icon">${origin.icon}</span><h1>${origin.name}</h1></div>
+ <p class="subtitle">${origin.title}</p><div class="detail">${origin.desc}</div>
+ <p class="section-title">📋 Retos de clase (completa todos para ganar una recompensa):</p>
+ <ul class="mission-list">${missions.map((m,index)=>`<li class="mission ${m.done?'done':''}"><span class="mission-icon">${m.done?'✅':'🎯'}</span><span class="mission-text">${index+1}. ${m.text}</span><span class="status">${m.done?'Completada':'Pendiente'}</span></li>`).join('')}</ul>
+ <div class="reward">${allDone?'🏆 ¡Has completado todos los retos!':'🎁 Recompensa al completar todos: '+origin.reward}<div class="progress"><i style="width:${completed/missions.length*100}%"></i></div><small>${completed} de ${missions.length} retos completados</small></div>
+ <div class="footer"><span>Última lectura: ${new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</span><button class="btn grn" id="refreshBtn">🔄 Actualizar progreso</button></div>`;
+ document.getElementById('refreshBtn').addEventListener('click',render);
+}
+document.getElementById('backBtn').addEventListener('click',()=>{window.location.href='mi_ciudad.html'});
+window.addEventListener('storage',event=>{if(event.key===SAVE_KEY)render()});
+window.addEventListener('pageshow',render);document.addEventListener('visibilitychange',()=>{if(!document.hidden)render()});
+render();
+</script>
+</body>
+</html>
