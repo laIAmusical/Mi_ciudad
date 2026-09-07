@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Misiones</title>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow+Semi+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f2f22;--paper:#fdf7ea;--ink:#26221c;--red:#d93a2b;--red2:#a92417;--yellow:#ffcf3f;--green:#3ecf6f;--line:#e2d4b2;--shadow:#1e1a17}
+*{box-sizing:border-box;margin:0;padding:0}
+body{min-height:100vh;padding:16px;font-family:'Barlow Semi Condensed',sans-serif;color:var(--ink);background:radial-gradient(900px 450px at 50% -8%,#1b4a35 0%,transparent 65%),repeating-linear-gradient(45deg,rgba(255,255,255,.015) 0 2px,transparent 2px 26px),var(--bg)}
+.page{width:min(760px,100%);margin:0 auto}.topbar{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px}.title{font-family:'Bungee';color:var(--yellow);font-size:clamp(1rem,3.5vw,1.5rem);text-shadow:2px 2px 0 var(--red2)}
+.btn{border:2px solid var(--shadow);border-radius:8px;padding:7px 12px;font:700 .95rem 'Barlow Semi Condensed',sans-serif;cursor:pointer;background:var(--yellow);box-shadow:0 3px 0 var(--shadow)}.btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--shadow)}.btn.ghost{background:#fff}.btn.grn{background:var(--green);color:#fff}
+.card{background:var(--paper);border:3px solid var(--shadow);border-radius:16px;padding:24px 24px 20px;box-shadow:0 10px 0 var(--shadow),0 24px 45px rgba(0,0,0,.35)}.hero{display:flex;align-items:center;gap:12px;margin-bottom:10px}.hero-icon{font-size:2.3rem}.card h1{font-family:'Bungee';font-size:clamp(1.25rem,4vw,2rem);color:var(--red);line-height:1.1}.subtitle{font-size:1.2rem;font-weight:700;margin-bottom:12px}.detail{background:#fff3cd;border:2px dashed #e6b31e;border-radius:10px;padding:10px 12px;line-height:1.3;margin-bottom:14px}.section-title{font-size:1.15rem;font-weight:700;margin-bottom:8px}.mission-list{background:#fff;border:2px dashed var(--line);border-radius:10px;padding:10px 14px;list-style:none}.mission{display:flex;align-items:flex-start;gap:9px;padding:8px 2px;border-bottom:1px dashed var(--line);font-size:1.08rem;line-height:1.2}.mission:last-child{border-bottom:0}.mission-icon{flex:0 0 23px;text-align:center}.mission.done{color:#176d36}.mission.done .mission-icon{color:var(--green)}.mission-text{flex:1}.status{font-size:.85rem;font-weight:700;color:#8a7f68;white-space:nowrap}.done .status{color:#1e9e50}.reward{margin-top:14px;background:#eaffef;border:2px solid var(--green);border-radius:10px;padding:10px 12px;font-weight:700}.progress{height:12px;background:#e4d9bd;border:1px solid var(--shadow);border-radius:8px;overflow:hidden;margin-top:7px}.progress i{display:block;height:100%;width:0;background:var(--green);transition:width .25s}.footer{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px;color:#6b6250;font-size:.9rem}.empty{text-align:center;padding:25px 10px;background:#fff;border:2px dashed var(--line);border-radius:10px}
+@media(max-width:520px){body{padding:10px}.card{padding:18px 14px 16px}.topbar{align-items:flex-start}.footer{align-items:stretch;flex-direction:column-reverse}.footer .btn{width:100%}.status{font-size:.76rem}}
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="topbar"><div class="title">🎯 Misiones</div><button class="btn ghost" id="backBtn">🗺️ Volver al barrio</button></div>
+  <section class="card" id="missionCard"><div class="empty">Cargando tus misiones...</div></section>
+</main>
+<script>
+'use strict';
+const SAVE_KEY='superTycoonV2';
+const MISSIONS_MAX_LEVEL=50;
+const scaleCount=(L,everyN)=>Math.max(1,Math.ceil(L/everyN));
+function fmt$(n){return Math.round(n||0).toLocaleString('es-ES')+'€';}
+const homeMissionBuy={id:'m_house',text:'Compra tu primera vivienda (piso o casa) en Valencia o las afueras',check:s=>(s.homes||[]).length>=1};
+const homeMissionUp={id:'m_houseup',text:'Mejora tu vivienda (sofá, cocina o jardín)',check:s=>Object.values(s.houseUp||{}).filter(Boolean).length>=1};
+const MISSION_GENERATORS={
+ worker:(L,target)=>{
+  const jobsN=scaleCount(L,15),foodN=scaleCount(L,8);
+  const loanTarget=Math.max(0,Math.round(10000*(1-Math.min(.9,L*.03))));
+  const jobsM={id:'w1',text:`Consigue ${jobsN} empleo${jobsN>1?'s':''} fijo${jobsN>1?'s':''} en el barrio`,check:s=>(s.jobs||[]).length>=jobsN};
+  const loanM={id:'w3',text:`Reduce tu préstamo bancario a menos de ${fmt$(loanTarget)}`,check:s=>(s.loanBalance||0)<=loanTarget};
+  const lvlM={id:'w4',text:L>=MISSIONS_MAX_LEVEL?'Mantén tu negocio en la cima (nivel 50)':`Alcanza el nivel ${target}`,check:s=>(s.level||1)>=target};
+  if(L===2) return [homeMissionBuy,jobsM,loanM,lvlM];
+  if(L===3) return [homeMissionUp,jobsM,loanM,lvlM];
+  return [jobsM,
+   {id:'w2',text:`Compra ${foodN} establecimiento${foodN>1?'s':''} de alimentación`,check:s=>(s.properties||[]).filter(id=>['est04','est05','est06','est07','est08','est09','est10','est11'].includes(id)).length>=foodN},
+   loanM,lvlM];
+ },
+ lottery:(L,target)=>{
+  const luxN=scaleCount(L,20),upGoal=Math.min(9,3+Math.floor(L/6)),taxDays=Math.min(10,2+Math.floor(L/10));
+  const estM={id:'l1',text:`Compra ${luxN} establecimiento${luxN>1?'s':''} de lujo (Gourmet o Gran Almacén)`,check:s=>(s.properties||[]).filter(id=>['est15','est24','est27','est31'].includes(id)).length>=luxN};
+  const lvlM={id:'l4',text:L>=MISSIONS_MAX_LEVEL?'Mantén tu negocio en la cima (nivel 50)':`Alcanza el nivel ${target}`,check:s=>(s.level||1)>=target};
+  if(L===2) return [estM,{id:'l_tax1',text:'Paga los impuestos patrimoniales al menos una vez',check:s=>(s.taxPaidCount||0)>=1},{id:'l3',text:'Paga los impuestos patrimoniales 2 días seguidos',check:s=>(s.taxPaidCount||0)>=2},lvlM];
+  if(L===3) return [{id:'l_up1',text:'Mejora tu establecimiento comprado (Cajas, Proveedores o Decoración, nivel 1)',check:s=>((s.up?.reg||0)+(s.up?.sup||0)+(s.up?.deco||0))>=1},estM,{id:'l3',text:'Paga los impuestos patrimoniales 2 días seguidos',check:s=>(s.taxPaidCount||0)>=2},lvlM];
+  return [estM,
+   {id:'l2',text:`Mejora el súper hasta sumar ${upGoal} niveles (Cajas, Proveedores o Decoración)`,check:s=>((s.up?.reg||0)+(s.up?.sup||0)+(s.up?.deco||0))>=upGoal},
+   {id:'l3',text:`Paga los impuestos patrimoniales ${taxDays} días seguidos`,check:s=>(s.taxPaidCount||0)>=taxDays},
+   lvlM];
+ },
+ vulnerable:(L,target)=>{
+  const jobsN=scaleCount(L,15),walletGoal=Math.round(500*Math.pow(L,1.55));
+  const jobsM={id:'v1',text:`Consigue ${jobsN} empleo${jobsN>1?'s':''} fijo${jobsN>1?'s':''} en el barrio`,check:s=>(s.jobs||[]).length>=jobsN};
+  const saveM={id:'v3',text:`Ahorra ${fmt$(walletGoal)} en tu cartera`,check:s=>(s.wallet||0)>=walletGoal};
+  const lvlM={id:'v4',text:L>=MISSIONS_MAX_LEVEL?'Mantén tu negocio en la cima (nivel 50)':`Alcanza el nivel ${target}`,check:s=>(s.level||1)>=target};
+  if(L===2) return [homeMissionBuy,jobsM,saveM,lvlM];
+  if(L===3) return [homeMissionUp,jobsM,saveM,lvlM];
+  return [jobsM,saveM,
+   {id:'v2',text:'Consigue 1 mejora para tu casa (sofá, cocina o jardín)',check:s=>Object.values(s.houseUp||{}).filter(Boolean).length>=1},
+   lvlM];
+ },
+ digital:(L,target)=>{
+  const techN=scaleCount(L,20),contractsN=scaleCount(L,12),mktGoal=Math.min(9,2+Math.floor(L/8));
+  const estM={id:'d1',text:`Compra ${techN} establecimiento${techN>1?'s':''} tecnológico${techN>1?'s':''} (Electrónica o Ropa deportiva)`,check:s=>(s.properties||[]).filter(id=>['est22','est26','est30'].includes(id)).length>=techN};
+  const lvlM={id:'d4',text:L>=MISSIONS_MAX_LEVEL?'Mantén tu negocio en la cima (nivel 50)':`Alcanza el nivel ${target}`,check:s=>(s.level||1)>=target};
+  if(L===2) return [estM,{id:'d_contract1',text:'Firma tu primer contrato de proveedor (cualquier categoría)',check:s=>Object.values(s.contracts||{}).reduce((a,b)=>a+b,0)>=1},{id:'d3',text:'Invierte en publicidad (nivel 1 de MKT)',check:s=>(s.up?.mkt||0)>=1},lvlM];
+  if(L===3) return [{id:'d_up1',text:'Mejora tu establecimiento con publicidad (nivel 1 de MKT)',check:s=>(s.up?.mkt||0)>=1},estM,{id:'d2',text:'Firma tu primer contrato de proveedor (cualquier categoría)',check:s=>Object.values(s.contracts||{}).reduce((a,b)=>a+b,0)>=1},lvlM];
+  return [estM,
+   {id:'d2',text:`Firma ${contractsN} contrato${contractsN>1?'s':''} de proveedor (cualquier categoría)`,check:s=>Object.values(s.contracts||{}).reduce((a,b)=>a+b,0)>=contractsN},
+   {id:'d3',text:`Invierte en publicidad (nivel ${mktGoal} de MKT)`,check:s=>(s.up?.mkt||0)>=mktGoal},
+   lvlM];
+ },
+ heir:(L,target)=>{
+  const propsN=scaleCount(L,10),loanTarget=Math.max(0,Math.round(50000*(1-Math.min(.95,L*.025)))),shelfGoal=Math.min(9,2+Math.floor(L/9));
+  const estM={id:'h1',text:`Ten ${propsN} establecimiento${propsN>1?'s':''} (cualquiera) para mantener el legado`,check:s=>(s.properties||[]).length>=propsN};
+  const lvlM={id:'h4',text:L>=MISSIONS_MAX_LEVEL?'Mantén tu negocio en la cima (nivel 50)':`Alcanza el nivel ${target}`,check:s=>(s.level||1)>=target};
+  if(L===2) return [estM,{id:'h_loan1',text:'Empieza a pagar tu préstamo bancario (redúcelo un poco)',check:s=>(s.loanBalance||0)<=Math.round(50000*0.9)},{id:'h3',text:'Mejora el local con Estanterías (nivel 1)',check:s=>(s.up?.shelf||0)>=1},lvlM];
+  if(L===3) return [{id:'h_up1',text:'Mejora el edificio heredado con Estanterías (nivel 1)',check:s=>(s.up?.shelf||0)>=1},estM,{id:'h2',text:'Empieza a pagar tu préstamo bancario (redúcelo un poco)',check:s=>(s.loanBalance||0)<=Math.round(50000*0.85)},lvlM];
+  return [estM,
+   {id:'h2',text:`Reduce el préstamo bancario a menos de ${fmt$(loanTarget)}`,check:s=>(s.loanBalance||0)<=loanTarget},
+   {id:'h3',text:`Mejora el local con Estanterías (nivel ${shelfGoal})`,check:s=>(s.up?.shelf||0)>=shelfGoal},
+   lvlM];
+ },
+ immigrant:(L,target)=>{
+  const jobsN=scaleCount(L,15),propsN=scaleCount(L,12),walletGoal=Math.round(10000*Math.pow(L,1.1));
+  const jobsM={id:'i1',text:`Consigue ${jobsN} empleo${jobsN>1?'s':''} fijo${jobsN>1?'s':''} en el barrio`,check:s=>(s.jobs||[]).length>=jobsN};
+  const saveM={id:'i3',text:`Ahorra ${fmt$(walletGoal)} en tu cartera`,check:s=>(s.wallet||0)>=walletGoal};
+  const lvlM={id:'i4',text:L>=MISSIONS_MAX_LEVEL?'Mantén tu negocio en la cima (nivel 50)':`Alcanza el nivel ${target}`,check:s=>(s.level||1)>=target};
+  if(L===2) return [homeMissionBuy,jobsM,saveM,lvlM];
+  if(L===3) return [homeMissionUp,jobsM,saveM,lvlM];
+  return [jobsM,
+   {id:'i2',text:`Ten ${propsN} establecimiento${propsN>1?'s':''} (cualquiera)`,check:s=>(s.properties||[]).length>=propsN},
+   saveM,lvlM];
+ }
+};
+const origins={
+ worker:{icon:'📦',name:'Clase trabajadora',title:'El Soñador del Barrio',desc:'Turnos dobles obligatorios, préstamo bancario y crecimiento progresivo con microcréditos locales.'},
+ lottery:{icon:'🎟️',name:'Ganador de lotería',title:'El Gran Inversor Sin Experiencia',desc:'Gran capacidad de inversión, pero con impuestos patrimoniales, inspecciones y competidores más agresivos.'},
+ vulnerable:{icon:'✉️',name:'Clase vulnerable',title:'Lucha por Sobrevivir',desc:'Energía máxima reducida, gastos difíciles de cubrir y acceso gradual a ayudas y microcréditos.'},
+ digital:{icon:'💻',name:'Emprendedor digital',title:'El Visionario Tecnológico',desc:'Inversiones en cripto y negocios online, con gran flujo de caja pero impuestos por plusvalías y riesgo de burbujas.'},
+ heir:{icon:'🏛️',name:'Heredero de negocio familiar',title:'El Guardián del Legado',desc:'Clientela fiel y reputación heredada, pero deudas con el banco y la obligación de mantener el negocio familiar a flote.'},
+ immigrant:{icon:'🌍',name:'Inmigrante emprendedor',title:'El Luchador Incansable',desc:'Subvenciones y ayudas al emprendimiento, pero con barreras de idioma, redes limitadas y un capital muy ajustado para empezar.'}
+};
+function readState(){try{return JSON.parse(localStorage.getItem(SAVE_KEY)||'null')}catch(error){return null}}
+function render(){
+ const state=readState();const card=document.getElementById('missionCard');
+ if(!state||!state.started){card.innerHTML='<div class="empty"><h2>No hay una partida activa</h2><p style="margin-top:8px">Vuelve al barrio para comenzar una partida.</p></div>';return}
+ const origin=origins[state.background]||origins.lottery;
+ const L=Math.max(1,Math.min(state.level||1,MISSIONS_MAX_LEVEL));
+ const target=Math.min(L+1,MISSIONS_MAX_LEVEL+1);
+ const gen=MISSION_GENERATORS[state.background]||MISSION_GENERATORS.lottery;
+ const missionDefs=gen(L,target);
+ const missions=missionDefs.map(m=>({text:m.text,done:!!m.check(state)}));
+ const completed=missions.filter(m=>m.done).length;const allDone=completed===missions.length;
+ const rewardCash=Math.round(2200*Math.pow(L,1.15));
+ const nextLvlLabel=L>=MISSIONS_MAX_LEVEL?'nivel máximo (50)':'nivel '+target;
+ card.innerHTML=`<div class="hero"><span class="hero-icon">${origin.icon}</span><h1>${origin.name}</h1></div>
+ <p class="subtitle">${origin.title}</p><div class="detail">${origin.desc}</div>
+ <p class="section-title">📋 Retos para llegar al ${nextLvlLabel} (completa todos para ganar una recompensa):</p>
+ <ul class="mission-list">${missions.map((m,index)=>`<li class="mission ${m.done?'done':''}"><span class="mission-icon">${m.done?'✅':'🎯'}</span><span class="mission-text">${index+1}. ${m.text}</span><span class="status">${m.done?'Completada':'Pendiente'}</span></li>`).join('')}</ul>
+ <div class="reward">${allDone?'🏆 ¡Has completado todos los retos de este nivel!':'🎁 Recompensa al completar todos: '+fmt$(rewardCash)+' de caja y +0,3 de reputación'}<div class="progress"><i style="width:${completed/missions.length*100}%"></i></div><small>${completed} de ${missions.length} retos completados · Nivel actual: ${L} de ${MISSIONS_MAX_LEVEL}</small></div>
+ <div class="footer"><span>Última lectura: ${new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</span><button class="btn grn" id="refreshBtn">🔄 Actualizar progreso</button></div>`;
+ document.getElementById('refreshBtn').addEventListener('click',render);
+}
+document.getElementById('backBtn').addEventListener('click',()=>{window.location.href='mi_ciudad.html'});
+window.addEventListener('storage',event=>{if(event.key===SAVE_KEY)render()});
+window.addEventListener('pageshow',render);document.addEventListener('visibilitychange',()=>{if(!document.hidden)render()});
+render();
+</script>
+</body>
+</html>
