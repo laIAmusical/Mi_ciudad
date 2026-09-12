@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SuperGanga Tycoon — Mercado-Broker</title>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow+Semi+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+:root{--bg:#0f2f22;--paper:#fdf7ea;--paper2:#f2e7cd;--ink:#26221c;--red:#d93a2b;--red2:#a92417;
+--yellow:#ffcf3f;--green:#3ecf6f;--line:#e2d4b2;--shadow:#1e1a17}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Barlow Semi Condensed',sans-serif;color:var(--ink);background:
+ radial-gradient(1200px 500px at 50% -10%,#1b4a35 0%,transparent 60%),
+ repeating-linear-gradient(45deg,rgba(255,255,255,.015) 0 2px,transparent 2px 26px),var(--bg);
+ min-height:100vh;overflow-x:hidden}
+.num{font-variant-numeric:tabular-nums}button{font-family:inherit;cursor:pointer;user-select:none}
+.btn{border:2px solid var(--shadow);border-radius:8px;padding:6px 12px;font-weight:700;font-size:.88rem;
+ box-shadow:0 3px 0 var(--shadow);transition:transform .1s;background:var(--yellow)}
+.btn:hover{transform:translateY(-2px)}.btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--shadow)}
+.btn.red{background:var(--red);color:#fff}.btn.ghost{background:#fff}.btn.grn{background:var(--green);color:#fff}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.panelhead{background:var(--paper);border:2px solid var(--shadow);border-radius:12px 12px 0 0;padding:12px 16px 8px}
+.panelhead h2{font-family:'Bungee';font-size:1.15rem;color:var(--red)}
+.panelhead p{font-size:.88rem;color:#6b6250;margin-top:4px;line-height:1.35}
+.panelbody{background:var(--paper);border:2px solid var(--shadow);border-top:1px dashed var(--line);border-radius:0 0 12px 12px;padding:12px}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center}
+#searchM{flex:1;min-width:160px;border:2px solid var(--shadow);border-radius:8px;padding:7px 10px;font:inherit;background:#fff}
+.qchip{border:2px solid var(--shadow);background:#fff;border-radius:8px;padding:5px 10px;font-weight:700;font-size:.83rem;box-shadow:0 3px 0 var(--shadow)}
+.qchip.sel{background:var(--yellow)}
+.emptybox{padding:28px;text-align:center;color:#8a7f68;background:#fff;border:2px dashed var(--line);border-radius:12px}
+.toast{background:var(--shadow);color:#fff;padding:9px 18px;border-radius:10px;border:2px solid var(--yellow);font-weight:600;animation:pop .25s;max-width:92vw;text-align:center}
+/* === TOASTS SIEMPRE POR DELANTE DEL MODAL === */
+#toasts{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:999999;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+#toasts .toast{pointer-events:auto}
+@keyframes pop{from{transform:scale(.7);opacity:0}}
+.modal{position:fixed;inset:0;z-index:10000;background:rgba(4,16,10,.78);display:none;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(2px)}
+.modal.open{display:flex}
+.mcard{position:relative;z-index:10001;background:var(--paper);border:3px solid var(--shadow);border-radius:14px;max-width:520px;width:100%;padding:22px;
+ box-shadow:0 10px 0 var(--shadow),0 24px 50px rgba(0,0,0,.5);animation:pop .3s;max-height:92vh;overflow-y:auto}
+.mcard.wide{max-width:960px}
+.mcard h2{font-family:'Bungee';color:var(--red);font-size:1.35rem;margin-bottom:8px}
+.mcard p{margin-bottom:8px;line-height:1.35}
+.sect{background:#fff;border:2px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+.sect h4{font-family:'Bungee';font-size:.9rem;color:var(--red);margin-bottom:6px}
+.orow{display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:1px dashed var(--line);padding:6px 0;font-size:.9rem;flex-wrap:wrap}
+.orow:last-child{border:none}
+.rowflex{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.topbar{position:sticky;top:0;z-index:60;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;
+ padding:8px 12px;background:linear-gradient(#0c281c,#0a2217);border-bottom:3px solid #1d5a41}
+.chip{background:#12382a;border:2px solid #1d5a41;color:#e9f5ec;border-radius:10px;padding:5px 11px;font-size:.92rem;
+ display:flex;align-items:center;gap:6px;box-shadow:0 3px 0 rgba(0,0,0,.3)}
+.chip b{color:#fff}
+.mini{width:64px;height:9px;background:rgba(0,0,0,.45);border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,.25)}
+.mini i{display:block;height:100%;transition:width .4s}
+#tbEnergy i{background:linear-gradient(90deg,#ffb347,var(--yellow))}
+/* ================= BROKER ================= */
+.broker-layout{display:grid;grid-template-columns:240px 1fr;gap:14px}
+.broker-categories{background:var(--paper2);border-radius:10px;padding:8px;border:2px solid var(--line);max-height:640px;overflow-y:auto}
+.broker-categories .cat-item{padding:5px 10px;border-radius:6px;cursor:pointer;font-weight:600;font-size:.85rem;margin-bottom:1px;display:flex;align-items:center;gap:6px;transition:background .1s}
+.broker-categories .cat-item:hover{background:#e6dcc8}
+.broker-categories .cat-item.active{background:var(--yellow);color:var(--shadow)}
+.broker-categories .cat-item .badge-cat{font-size:.7rem;background:rgba(0,0,0,.1);border-radius:10px;padding:0 6px;margin-left:auto}
+.broker-categories .section-header{background:transparent;cursor:default;font-family:'Bungee';font-size:.72rem;color:var(--red);border-bottom:2px solid var(--yellow);padding:8px 4px 4px;text-transform:uppercase;margin:8px 0 4px;pointer-events:none;display:flex;align-items:center;gap:6px}
+.broker-categories .section-header:first-child{margin-top:0}
+.broker-table-wrap{overflow-x:auto;border:2px solid var(--line);border-radius:10px;background:#fff}
+.broker-table{width:100%;border-collapse:collapse;font-size:.82rem;table-layout:fixed}
+.broker-table th{background:var(--paper2);text-align:left;padding:6px 10px;border-bottom:2px solid var(--line);font-family:'Bungee';font-weight:400;font-size:.78rem;color:var(--ink)}
+.broker-table td{padding:5px 10px;border-bottom:1px solid #eee;cursor:pointer;transition:background .1s}
+.broker-table tr:hover td{background:#f5efe4}
+.broker-table .col-emoji{width:36px;text-align:center}
+.broker-table .col-name{min-width:120px}
+.broker-table .col-cat{min-width:80px}
+.broker-table .col-buy{width:100px;text-align:right}
+.broker-table .col-sell{width:100px;text-align:right}
+.broker-table .col-change{width:90px;text-align:right}
+.broker-table .col-stock{width:70px;text-align:center}
+.broker-table .trend-up{color:var(--green)}
+.broker-table .trend-down{color:var(--red)}
+.broker-table .trend-eq{color:#999}
+.broker-table .badge-stock{background:var(--paper2);border-radius:4px;padding:0 6px;font-size:.7rem}
+.broker-table .badge-stock.own{background:#c8e6c9}
+.broker-table .badge-stock.est{background:#d4e0f0}
+/* Market detail view */
+.mtabs{display:flex;gap:0;margin-bottom:0;border-bottom:3px solid var(--shadow)}
+.mtab{padding:7px 18px;font-weight:700;font-size:.85rem;border:2px solid var(--line);border-bottom:none;border-radius:8px 8px 0 0;background:#efe7d2;cursor:pointer;color:#5c5443}
+.mtab.active{background:var(--yellow);border-color:var(--shadow);color:var(--ink);transform:translateY(1px)}
+.mtab-body{display:none;padding:12px 4px 4px}
+.mtab-body.active{display:block}
+.market-table{width:100%;border-collapse:collapse;font-size:.8rem;margin-bottom:10px;background:#fff;border-radius:8px;overflow:hidden;table-layout:fixed}
+.market-table th{background:var(--paper2);padding:6px 10px;text-align:left;font-weight:700;font-size:.72rem;color:var(--ink);border-bottom:1px solid var(--line);text-transform:uppercase;letter-spacing:.02em}
+.market-table td{padding:5px 10px;border-bottom:1px solid #f0e8d2;vertical-align:middle}
+.market-table tr:last-child td{border-bottom:none}
+.market-table tr:hover td{background:#faf6ea}
+.market-table .col-qty{width:110px;text-align:right}
+.market-table .col-price{width:110px;text-align:right}
+.market-table .col-actions{width:110px;text-align:center}
+.market-table th.col-qty,.market-table th.col-price{text-align:right}
+.market-table th.col-actions{text-align:center}
+.market-table td.col-qty{font-weight:700;color:#173c2d}
+.market-table td.col-price{font-weight:700}
+.market-table td.col-actions .btn{padding:3px 10px;font-size:.72rem;box-shadow:0 2px 0 var(--shadow);min-width:80px}
+.market-section-title{font-family:'Bungee';font-size:.92rem;color:var(--red);margin:12px 0 6px;display:flex;align-items:center;gap:6px}
+.market-section-title:first-child{margin-top:0}
+.sell-green{background:var(--green)!important;color:#fff;border-color:#1b6d3a!important;box-shadow:0 3px 0 #1b6d3a!important}
+.buy-blue{background:#2e78e0!important;color:#fff;border-color:#173c2d!important;box-shadow:0 3px 0 #173c2d!important}
+.location{font-size:.74rem;color:#5c5443;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.price-buy{color:var(--green)}
+.price-sell{color:var(--red)}
+.price-history-row{display:flex;justify-content:space-between;padding:5px 6px;border-bottom:1px dashed var(--line);font-size:.85rem}
+.price-history-row:last-child{border:none}
+.source-badge{font-size:.65rem;padding:1px 6px;border-radius:6px;margin-left:5px;font-weight:700;vertical-align:middle}
+.source-npc{background:#e6e6e6;color:#5c5443}
+.source-player{background:#c8e6c9;color:#176d36}
+@media(max-width:700px){.broker-layout{grid-template-columns:1fr}.broker-categories{max-height:260px;display:block}.broker-categories .cat-item{flex:1 1 100%}.market-table td,.market-table th{padding:4px 4px;font-size:.7rem}.market-table .col-qty,.market-table .col-price,.market-table .col-actions{width:auto}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="chip">💼 Cartera <b class="num" id="tbWallet">€1.000.000</b></div>
+  <div class="chip">⚡ <div class="mini" id="tbEnergy"><i style="width:100%"></i></div></div>
+  <div class="chip"><span id="tbMood">😊</span> Ánimo</div>
+  <div class="chip">📅 Día <b id="tbDay">1</b></div>
+  <div class="chip">🕗 <b id="tbClock">--:--</b></div>
+  <div class="chip" id="tbMode">🤖 Offline-CPU</div>
+  <button class="btn ghost" onclick="window.location.href='mi_ciudad.html'">🗺️ Volver a Mi ciudad</button>
+</div>
+
+<div style="max-width:1320px;margin:8px auto;padding:0 12px">
+  <div class="panelhead">
+    <h2>Centro comercial</h2>
+    <p id="brokerNote"></p>
+    <div class="controls" id="searchWrap"><input id="searchM" placeholder="🔍 Buscar…"><div id="qchips"></div></div>
+  </div>
+  <div class="panelbody">
+    <div class="broker-layout">
+      <div class="broker-categories" id="brokerCategories"></div>
+      <div id="brokerMain"></div>
+    </div>
+    <div id="offersWrap"></div>
+  </div>
+</div>
+
+<div class="modal" id="detailModal"><div class="mcard wide" id="detailCard"></div></div>
+
+<div id="toasts"></div>
+
+<script>
+const KEY='superTycoonV2';
+function loadState(){ try{return JSON.parse(localStorage.getItem(KEY));}catch(e){return null;} }
+let S=loadState()||{};
+if(!S||S.started!==true||S.setupComplete!==true){
+ window.location.replace('mi_ciudad.html');
+ throw new Error('No hay partida iniciada. Empieza una partida en mi_ciudad.html.');
+}
+applyDefaults();
+
+const $=id=>document.getElementById(id);
+const r2=n=>Math.round(n*100)/100;
+const fmt$=n=>'€'+(n||0).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtEuroInt=n=>'€'+Math.round(n).toLocaleString('es-ES');
+const norm=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+function toast(m){const t=document.createElement('div');t.className='toast';t.innerHTML=m;$('toasts').appendChild(t);setTimeout(()=>t.remove(),3600);}
+function save(){localStorage.setItem(KEY,JSON.stringify(S));}
+
+function updateHUD(){
+ if(!S || !S.wallet) return;
+ $('tbWallet').textContent='€'+S.wallet.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
+ $('tbEnergy').firstElementChild.style.width=(S.energy||100)+'%';
+ $('tbMood').textContent=(S.mood||70)>=80?'😄':(S.mood||70)>=55?'😊':(S.mood||70)>=30?'😐':(S.mood||70)>=15?'😟':'😭';
+ $('tbDay').textContent=S.day||1;
+ const h=Math.floor((S.clockMin||0)/60),m=(S.clockMin||0)%60;
+ $('tbClock').textContent=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+ $('tbMode').textContent=S.mode==='online'?'🌐 Online-Multijugador':'🤖 Offline-CPU';
+}
+
+/* ================= FIREBASE ================= */
+const FIREBASE_CONFIG={apiKey:"AIzaSyAonZFfeUCTELdFUhQrPADOPafFA0_Tzeg",authDomain:"juegobarrio-fbe55.firebaseapp.com",projectId:"juegobarrio-fbe55"};
+const FB_OK = typeof firebase!=='undefined' && !FIREBASE_CONFIG.apiKey.startsWith('TU_');
+const FB={db:null,uid:null,pname:null,room:null,online:false,marketCache:{}};
+const ROOM=S.room||'barrio-1';
+
+function initFirebase(){
+ if(!FB_OK || S.mode!=='online') return;
+ try{ if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);}catch(e){}
+ firebase.auth().signInAnonymously().then(cr=>{
+  FB.uid=cr.user.uid;
+  FB.pname=S.pname||'Jugador';
+  FB.room=ROOM;
+  FB.db=firebase.firestore();
+  FB.online=true;
+  $('tbMode').textContent='🌐 Online-Multijugador';
+  FB.db.collection('rooms').doc(ROOM).collection('marketOffers').onSnapshot(snap=>{
+   FB.marketCache={};
+   snap.forEach(doc=>{
+    const d=doc.data();
+    if(!d || !d.pid) return;
+    if(d.uid===FB.uid) return;
+    if(!FB.marketCache[d.pid]) FB.marketCache[d.pid]={sellers:[],buyers:[]};
+    if(d.kind==='sell'){
+     FB.marketCache[d.pid].sellers.push({
+      name:d.pname||'Jugador',
+      loc:d.location||'Comercio online',
+      qty:d.qty||1,
+      price:d.price||0,
+      isPlayer:true,
+      uid:d.uid
+     });
+    } else if(d.kind==='buy'){
+     FB.marketCache[d.pid].buyers.push({
+      name:d.pname||'Jugador',
+      loc:d.location||'Comercio online',
+      qty:d.qty||1,
+      price:d.price||0,
+      isPlayer:true,
+      uid:d.uid
+     });
+    }
+   });
+   if($('detailModal').classList.contains('open') && CURRENT_DETAIL_ID!==null){
+    openDetail('product',CURRENT_DETAIL_ID);
+   }
+  },()=>{});
+  FB.db.collection('rooms').doc(ROOM).collection('players').doc(FB.uid).set({
+   name:FB.pname, level:S.level||1, lastSeen:firebase.firestore.FieldValue.serverTimestamp()
+  },{merge:true}).catch(()=>{});
+  setInterval(()=>{
+   if(!FB.db) return;
+   FB.db.collection('rooms').doc(ROOM).collection('players').doc(FB.uid).set({
+    name:FB.pname, level:S.level||1, lastSeen:firebase.firestore.FieldValue.serverTimestamp()
+   },{merge:true}).catch(()=>{});
+  },25000);
+ }).catch(()=>{FB.online=false;});
+}
+initFirebase();
+
+/* ================= SECCIONES Y CATEGORÍAS ================= */
+const SECTIONS=[
+ {id:'alim', name:'🥗 Alimentación y Frescos'},
+ {id:'super',name:'🛒 Supermercado y Gran Consumo'},
+ {id:'tec',  name:'📱 Tecnología y Electrodomésticos'},
+ {id:'hog',  name:'🏠 Hogar, Moda y Ocio'},
+ {id:'ban',  name:'🚿 Baños, Cocinas y Jardín'},
+ {id:'con',  name:'🔨 Construcción y Reformas'},
+ {id:'ser',  name:'💼 Servicios Adicionales'},
+];
+const CATS=[
+ ['FRU','Frutería','🍎','alim'],
+ ['VER','Verdulería','🥕','alim'],
+ ['CAR','Carnicería y Charcutería','🥩','alim'],
+ ['PES','Pescadería y Marisquería','🐟','alim'],
+ ['PAN','Panadería, Pastelería y Bollería','🥖','alim'],
+ ['PLA','Platos preparados y cocinados','🍲','alim'],
+
+ ['DES','Alimentación envasada y despensa','🥫','super'],
+ ['BOD','Bodega (vinos, licores y bebidas)','🍷','super'],
+ ['DRO','Droguería y Limpieza','🧴','super'],
+ ['PER','Perfumería, Higiene y Cuidado Personal','🧼','super'],
+ ['PAR','Parafarmacia y Salud','💊','super'],
+ ['BEB','Bebés (alimentación, pañales, canastilla)','🍼','super'],
+ ['MAS','Mascotas (alimentación y accesorios)','🐶','super'],
+
+ ['TV','Televisores, Sonido y Smart TV','📺','tec'],
+ ['TEL','Telefonía, Smartwatches y Accesorios','📱','tec'],
+ ['INF','Informática (portátiles, monitores, tablets)','💻','tec'],
+ ['GEL','Grandes Electrodomésticos','🔌','tec'],
+ ['PEL','Pequeño Electrodoméstico','☕','tec'],
+ ['VID','Videojuegos y Consolas','🎮','tec'],
+
+ ['MOD','Textil y Moda','👗','hog'],
+ ['DEC','Hogar y Decoración','🏺','hog'],
+ ['MUE','Muebles y Descanso','🛋️','hog'],
+ ['DEP','Deportes','⚽','hog'],
+ ['PAP','Papelería, Librería y Juguetería','📚','hog'],
+
+ ['BAN','Baños','🚿','ban'],
+ ['COC','Cocinas','🍳','ban'],
+ ['JAR2','Jardín y Terraza','🌷','ban'],
+ ['ILU','Iluminación','💡','ban'],
+ ['CER','Cerámica','🏺','ban'],
+
+ ['MAD','Madera','🪵','con'],
+ ['PUE','Puertas, ventanas y escaleras','🚪','con'],
+ ['CLI','Climatización y calefacción','❄️','con'],
+ ['SUE','Suelos','🟫','con'],
+ ['ELE','Electricidad y domótica','⚡','con'],
+ ['HER','Herramientas','🔨','con'],
+ ['PIN','Pintura y droguería','🎨','con'],
+ ['CON','Construcción','🧱','con'],
+ ['FER','Ferretería y seguridad','🔒','con'],
+ ['FON','Fontanería','🚰','con'],
+ ['ENE','Energías renovables','☀️','con'],
+
+ ['VIA','Viajes','✈️','ser'],
+ ['EST','Estaciones de Servicio','⛽','ser'],
+ ['OPT','Óptica y Fotografía','📷','ser'],
+];
+const CATNAME=Object.fromEntries(CATS.map(c=>[c[0],c[1]]));
+const CATEMO=Object.fromEntries(CATS.map(c=>[c[0],c[2]]));
+const CATSECTION=Object.fromEntries(CATS.map(c=>[c[0],c[3]]));
+
+/* ================= CATÁLOGO ================= */
+const RAW={
+FRU:[['🍎','Manzana',.6],['🍌','Plátano de Canarias',.5],['🍊','Naranja',.5],['🍐','Pera',.7],['🍇','Uvas',1.4],['🍓','Fresas',1.8],['🍉','Sandía',2.2],['🍈','Melón',1.9],['🍍','Piña',1.7],['🥭','Mango',1.5],['🥑','Aguacate',1.9],['🍋','Limón',.6],['🍑','Melocotón',1.1],['🥝','Kiwi',1.2],['🍒','Cerezas',2.6],['🫐','Arándanos',2.8],['🥥','Coco',1.6]],
+VER:[['🥕','Zanahoria (1 kg)',.4],['🍅','Tomate (1 kg)',.6],['🥔','Patatas (1 kg)',.35],['🧅','Cebolla (1 kg)',.4],['🥬','Lechuga',.7],['🥦','Brócoli',1],['🌽','Mazorca de maíz',.8],['🥒','Pepino',.6],['🫑','Pimiento',.9],['🍆','Berenjena',.8],['🥐','Calabacín',.7],['🧄','Ajo',.5],['🍄','Champiñones',1.1],['🎃','Calabaza',.9],['🫛','Guisantes',1]],
+CAR:[['🍗','Pollo entero',3.2],['🍗','Pechuga de pollo',3.8],['🥩','Ternera',5.5],['🥩','Chuletas de cerdo',4.2],['🥓','Bacon',2.9],['🌭','Salchichas',2.4],['🍖','Costillas',4.6],['🥩','Carne picada',3.9],['🦃','Pavo',3.6],['🍗','Alitas de pollo',2.8],['🥓','Jamón serrano',6.8],['🍖','Chorizo',2.6],['🥩','Chuletón de vaca',7.9],['🥩','Morcilla',2.2]],
+PES:[['🐟','Merluza',4.8],['🐟','Salmón',6.2],['🦐','Gambas',5.6],['🐟','Sardinas',2.9],['🦑','Calamares',4.4],['🐟','Atún fresco',5.9],['🦪','Mejillones',3.4],['🐙','Pulpo',7.4],['🐟','Trucha',4.1]],
+PAN:[['🥖','Baguette',.8],['🍞','Pan de molde',1.2],['🥐','Croissant',.9],['🥯','Bagel',1],['🍩','Dónut',1.1],['🧁','Magdalena',.8],['🥧','Tarta de manzana',3.5],['🍪','Galletas caseras',1.6],['🥨','Pretzel',.9],['🍰','Tarta de chocolate',4.2],['🍞','Pan integral',1.4],['🥖','Chapata',.7]],
+PLA:[['🥗','Ensalada preparada',2.4],['🍲','Lentejas guisadas',3.2],['🥘','Paella',5.5],['🍜','Sopa',2.1],['🍝','Pasta preparada',3],['🌮','Tacos',3.8],['🍗','Pollo asado',4.9],['🐟','Pescado empanado',4.2],['🥔','Tortilla patatas',3.4],['🥩','Albóndigas',3.9]],
+
+DES:[['🍚','Arroz (1 kg)',1],['🍝','Espaguetis',.9],['🍜','Fideos',.8],['🫙','Tomate frito',1.1],['🥫','Atún en lata',1.4],['🫘','Alubias',1],['🫘','Lentejas',1],['🫘','Garbanzos',1],['🫒','Aceite de oliva',4.2],['🌻','Aceite de girasol',2.6],['🧂','Sal',.5],['🍯','Miel',2.8],['🌶️','Especias',1.2],['🍶','Vinagre',1.1],['🥫','Conservas de verduras',1.3]],
+BOD:[['💧','Agua mineral 1,5 L',.5],['🥤','Refresco de cola',1.1],['🥤','Refresco de naranja',1],['🧃','Zumo de naranja',1.4],['🧃','Zumo multifrutas',1.5],['🍺','Cerveza',1.3],['🍺','Cerveza artesana',2.4],['🍷','Vino tinto',4.5],['🍾','Cava',5.8],['🥃','Whisky',12],['🍸','Ginebra',11],['🍶','Sake',9],['🍋','Limonada',1.3]],
+DRO:[['🧴','Detergente líquido',3.4],['🧺','Cápsulas lavadora',4.6],['🧼','Lavavajillas',1.6],['🧽','Estropajos',1],['🧻','Papel higiénico (12 rollos)',3.8],['🧻','Papel de cocina',2.2],['🧴','Lejía',1.3],['🧴','Limpiasuelos',2],['🧴','Limpia cristales',1.8],['🗑️','Bolsas de basura',1.7],['🧴','Suavizante',2.4],['🌸','Ambientador',2.1]],
+PER:[['🧴','Champú',2.6],['🧴','Gel de ducha',2],['🧼','Pastilla de jabón',.9],['🪥','Pasta de dientes',1.7],['🪥','Cepillo de dientes',1.4],['🧴','Desodorante',2.3],['🧻','Pañuelos',1.1],['🧴','Crema hidratante',3.1],['🧴','Protector solar',4.8],['🪒','Cuchillas de afeitar',3.9],['🧴','Laca',2.5],['🦷','Hilo dental',1.2]],
+PAR:[['💊','Paracetamol',3.5],['💊','Ibuprofeno',4],['🩹','Tiritas',2.1],['🧴','Alcohol',2.8],['🩺','Termómetro',8.5],['💊','Vitaminas',6.9],['💊','Antiácido',4.2],['🧴','Agua oxigenada',2.3]],
+BEB:[['🍼','Leche infantil',6.5],['🥣','Papillas',2.4],['🧷','Pañales',5.2],['🧻','Toallitas',2.1],['🥣','Potitos',1.6],['🍼','Biberón',4.5],['🧸','Chupete',3.2]],
+MAS:[['🐶','Pienso para perro',3.8],['🐱','Pienso para gato',3.4],['🦴','Snacks para perro',1.8],['🐾','Arena para gato',3.2],['🐠','Comida para peces',1.4],['🐹','Pienso para roedores',1.6],['🦮','Collar',2.9],['🧸','Juguete para mascota',2.4]],
+
+TV:[['📺','Smart TV 55"',599],['📺','Smart TV 65"',899],['📺','Televisor 32"',249],['📻','Barra de sonido',149],['🔊','Altavoz Bluetooth',89],['🎧','Auriculares inalámbricos',99]],
+TEL:[['📱','Smartphone gama alta',899],['📱','Smartphone gama media',349],['⌚','Smartwatch',249],['🔌','Cargador rápido',29],['📲','Funda móvil',19],['🎧','Auriculares TWS',69]],
+INF:[['💻','Portátil gaming',1299],['💻','Portátil oficina',649],['🖥️','Monitor 27"',249],['⌨️','Teclado mecánico',89],['🖱️','Ratón gaming',59],['📱','Tablet',349],['🖨️','Impresora multifunción',129]],
+GEL:[['🔌','Lavadora',499],['❄️','Frigorífico',699],['🔥','Horno',349],['🍽️','Lavavajillas',449],['🌀','Secadora',399],['☕','Vitrocerámica',299]],
+PEL:[['☕','Cafetera express',149],['🍞','Tostadora',39],['🌪️','Aspirador',199],['🥣','Batidora',59],['🍳','Freidora de aire',119],['🧹','Robot aspirador',299]],
+VID:[['🎮','PlayStation 5',549],['🎮','Xbox Series X',549],['🎮','Nintendo Switch',329],['💿','Videojuego AAA',69],['🕹️','Mando extra',69],['🎧','Auriculares gaming',99]],
+
+MOD:[['👕','Camiseta básica',12],['👖','Vaquero',39],['👗','Vestido',45],['🧥','Abrigo',89],['👟','Zapatillas deportivas',79],['👔','Camisa',29],['🧦','Calcetines pack',9],['👜','Bolso',59]],
+DEC:[['🖼️','Cuadro decorativo',39],['🕯️','Vela aromática',12],['🏺','Jarrón decorativo',29],['🪞','Espejo',79],['🧸','Cojín decorativo',19],['🪴','Planta artificial',24]],
+MUE:[['🛋️','Sofá 3 plazas',699],['🛏️','Cama matrimonio',499],['🪑','Silla comedor',89],['🛏️','Colchón viscoelástico',449],['🗄️','Armario',349],['🪑','Mesa comedor',299]],
+DEP:[['🏃','Cinta de correr',599],['🚴','Bicicleta estática',349],['🏋️','Mancuernas set',89],['⚽','Balón fútbol',29],['🎾','Raqueta tenis',79],['⛺','Tienda campaña',149],['🎣','Caña de pescar',69]],
+PAP:[['📚','Libro bestseller',22],['📓','Cuaderno',4],['✏️','Bolígrafo premium',8],['🎨','Set pinturas',24],['🧩','Puzle 1000 piezas',19],['🎲','Juego de mesa',34],['🧸','Peluche',15]],
+
+BAN:[['🚿','Mampara ducha',249],['🛁','Bañera',499],['🚽','Inodoro',179],['🚰','Grifo lavabo',69],['🪞','Espejo baño',49],['🧴','Mueble baño',129]],
+COC:[['🍳','Encimera cocina',299],['🔥','Campana extractora',199],['🪑','Muebles cocina modulares',899],['🚰','Grifo cocina',49],['🗄️','Armario cocina',349],['🔪','Set cuchillos',99]],
+JAR2:[['🌷','Maceta decorativa',19],['🪴','Planta de exterior',29],['🪑','Mueble jardín',199],['🔥','Barbacoa',249],['⛲','Fuente jardín',349],['🌿','Set semillas',12]],
+ILU:[['💡','Lámpara techo',49],['💡','Lámpara pie',89],['🕯️','Aplique pared',29],['💡','Luz LED tira',24],['💡','Lámpara sobremesa',39],['🔆','Foco exterior',19]],
+CER:[['🏺','Jarrón cerámica',39],['🍽️','Vajilla cerámica',89],['🏺','Macetero cerámica',24],['🍵','Tetera cerámica',29],['🪴','Fuente cerámica',49],['🏺','Bandeja cerámica',19]],
+
+MAD:[['🪵','Tabla roble',49],['🪵','Tabla pino',19],['🪵','Panel contrachapado',29],['🪵','Listones madera',12],['🪵','Tablero DM',24],['🪵','Viga madera',79]],
+PUE:[['🚪','Puerta interior',149],['🚪','Puerta blindada',599],['🪟','Ventana aluminio',249],['🪟','Ventana PVC',299],['🪜','Escalera madera',199],['🚪','Puerta corredera',349]],
+CLI:[['❄️','Aire acondicionado split',449],['🔥','Caldera gas',899],['🔥','Radiador eléctrico',149],['❄️','Ventilador techo',99],['🔥','Estufa pellet',699],['❄️','Deshumidificador',199]],
+SUE:[['🟫','Suelo laminado (m²)',19],['🟫','Suelo tarima (m²)',39],['🟫','Suelo porcelánico (m²)',29],['🟫','Suelo vinílico (m²)',24],['🟫','Rodapié',4],['🟫','Alfombra persa',299]],
+ELE:[['⚡','Cuadro eléctrico',129],['⚡','Enchufe inteligente',29],['💡','Domótica kit básico',199],['📡','Router WiFi 6',89],['🔌','Regleta protección',19],['🔔','Videoportero',149]],
+HER:[['🔨','Martillo',19],['🪚','Sierra circular',89],['🪛','Set destornilladores',24],['🔧','Llave inglesa',15],['🧰','Caja herramientas',49],['🪛','Taladro percutor',79]],
+PIN:[['🎨','Pintura blanca 15L',39],['🎨','Pintura color 15L',49],['🖌️','Rodillo',12],['🖌️','Brocha',8],['🎨','Barniz madera',29],['🧴','Disolvente',15]],
+CON:[['🧱','Ladrillo (100 uds)',49],['🧱','Bloque hormigón',3],['🏗️','Cemento 25 kg',7],['🏗️','Arena 25 kg',4],['🏗️','Yeso 25 kg',9],['🔩','Varilla acero 6m',12]],
+FER:[['🔒','Cerradura seguridad',89],['🔒','Candado',15],['🔗','Cadena acero',24],['🔧','Tornillería surtida',19],['🪛','Clavos surtidos',8],['🚪','Pomo puerta',12]],
+FON:[['🚰','Tubo PVC 2m',12],['🚿','Flexo ducha',19],['🚰','Llave paso',15],['🚽','Kit cisterna',49],['🚰','Termo eléctrico',249],['🚿','Columna ducha',149]],
+ENE:[['☀️','Placa solar 450W',199],['🔋','Batería solar',499],['⚡','Inversor solar',299],['🌬️','Aerogenerador pequeño',899],['☀️','Kit solar completo',1499],['🔥','Bomba de calor',1999]],
+
+VIA:[['✈️','Vuelo nacional',89],['✈️','Vuelo internacional',349],['🏨','Hotel 4* (noche)',99],['🎫','Crucero 7 días',899],['🎢','Parque temático',69],['🚗','Alquiler coche',49]],
+EST:[['⛽','Gasolina 95 (L)',1.7],['⛽','Diésel (L)',1.6],['🔌','Recarga eléctrica',12],['🚿','Túnel lavado',9],['☕','Café estación',1.5],['🥪','Bocadillo estación',4.5]],
+OPT:[['👓','Gafas graduadas',149],['🕶️','Gafas sol',99],['👁️','Lentillas (mes)',29],['📷','Cámara réflex',699],['📸','Objetivo 50mm',249],['📷','Trípode',49]]
+};
+
+const CAT_UNLOCK={};
+const UNLOCK_OVR={};
+const POP_OVR={'Leche entera':10,'Huevos (docena)':10,'Pan de molde':9,'Baguette':9,'Agua mineral 1,5 L':9,'Refresco de cola':9,'Arroz (1 kg)':8,'Papel higiénico (12 rollos)':8,'Patatas (1 kg)':8,'Plátano de Canarias':9,'Cerveza':8,'Detergente líquido':7,'Tomate (1 kg)':8,'Manzana':8};
+const PRODUCTS=[];
+(function(){
+ let id=0;
+ for(const [cat] of CATS){
+  const list=RAW[cat]||[];
+  for(const [e,n,c] of list){
+   let h=0;for(let i=0;i<n.length;i++)h=(h*31+n.charCodeAt(i))>>>0;
+   PRODUCTS.push({id:id++,emoji:e,name:n,cost:c,cat,pop:POP_OVR[n]??(4+h%6),unlock:1,fair:+(c*1.55).toFixed(2)});
+  }
+ }
+})();
+const byId=Object.fromEntries(PRODUCTS.map(p=>[p.id,p]));
+
+/* ================= NPCs DEL MERCADO (máx. 100 únicos) ================= */
+const NPC_MAX=100;
+const MARKET_LOCATIONS=['Mercado Central','Ruzafa','El Carmen','Benimaclet','Campanar','Patraix','Cabanyal','Colón','Mestalla','Malvarrosa','Alboraya','Paterna','Mislata','Burjassot','Torrent','Catarroja','Quart','Manises','Xirivella','Alaquàs'];
+const NPC_NAMES_BASE=['Marta','Ahmed','Rosa','Iván','Chloe','Diego','Lucía','Hugo','Carmen','Jorge','Nuria','Pablo','Elena','Sergio','Ana','Raúl','Sara','Marcos','Irene','Adrián','Lucas','Paula','Alberto','Silvia','Víctor','Beatriz','Óscar','Miriam','Rubén','Nerea','Javi','Patricia','Álvaro','Alba','Andrés','María','Guillermo','Clara','Roberto','Sonia'];
+const NPC_PLAYERS=(function(){
+ const out=[];
+ const base=NPC_NAMES_BASE.length;
+ for(let i=0;i<NPC_MAX;i++){
+  const name=NPC_NAMES_BASE[i%base]+(i>=base?(' '+Math.floor(i/base)+1):'');
+  out.push(name);
+ }
+ return out;
+})();
+
+function hashProduct(id,salt){
+ let h=id*2654435761+salt*40503;h=((h>>16)^h)*2654435761;h=h>>>0;return h/4294967296;
+}
+
+function generateMarket(id){
+ const p=byId[id];if(!p)return{sellers:[],buyers:[]};
+ const rand=seed=>hashProduct(id,seed);
+ const sellers=[];const buyers=[];
+
+ const cache=FB.marketCache&&FB.marketCache[id];
+ let playerSellers=0, playerBuyers=0;
+ if(FB.online && cache){
+  (cache.sellers||[]).forEach(s=>{
+   sellers.push({
+    name:s.name, loc:s.loc, qty:s.qty, price:s.price,
+    isPlayer:true, uid:s.uid
+   });
+   playerSellers++;
+  });
+  (cache.buyers||[]).forEach(b=>{
+   buyers.push({
+    name:b.name, loc:b.loc, qty:b.qty, price:b.price,
+    isPlayer:true, uid:b.uid
+   });
+   playerBuyers++;
+  });
+ }
+
+ const MIN_SELLERS_ONLINE=4;
+ const MIN_BUYERS_ONLINE=3;
+ const MIN_SELLERS_OFFLINE=5+Math.floor(rand(101)*3);
+ const MIN_BUYERS_OFFLINE=4+Math.floor(rand(202)*3);
+
+ const targetSellers = FB.online ? Math.max(2, MIN_SELLERS_ONLINE - playerSellers) : MIN_SELLERS_OFFLINE;
+ const targetBuyers  = FB.online ? Math.max(2, MIN_BUYERS_ONLINE  - playerBuyers)  : MIN_BUYERS_OFFLINE;
+
+ const usedIdxS=new Set();
+ const usedIdxB=new Set();
+ const pickUnique=(usedSet,seed)=>{
+  let idx=Math.floor(rand(seed)*NPC_PLAYERS.length);
+  let tries=0;
+  while(usedSet.has(idx) && tries++<50){
+   idx=(idx+1)%NPC_PLAYERS.length;
+  }
+  usedSet.add(idx);
+  return idx;
+ };
+
+ for(let i=0;i<targetSellers;i++){
+  const idx=pickUnique(usedIdxS,300+i);
+  const name=NPC_PLAYERS[idx];
+  const loc=MARKET_LOCATIONS[Math.floor(rand(400+i)*MARKET_LOCATIONS.length)];
+  const qty=5+Math.floor(rand(600+i)*Math.max(5,p.fair*4));
+  const price=r2(p.fair*(0.9+rand(700+i)*0.5));
+  sellers.push({name,loc,qty,price,isPlayer:false});
+ }
+ for(let i=0;i<targetBuyers;i++){
+  const idx=pickUnique(usedIdxB,800+i);
+  const name=NPC_PLAYERS[idx];
+  const loc=MARKET_LOCATIONS[Math.floor(rand(900+i)*MARKET_LOCATIONS.length)];
+  const qty=5+Math.floor(rand(1100+i)*Math.max(5,p.fair*3));
+  const price=r2(p.fair*(0.6+rand(1200+i)*0.35));
+  buyers.push({name,loc,qty,price,isPlayer:false});
+ }
+
+ sellers.sort((a,b)=>a.price-b.price);
+ buyers.sort((a,b)=>b.price-a.price);
+ return{sellers,buyers};
+}
+
+function generatePriceHistory(id){
+ const p=byId[id];if(!p)return[];
+ const out=[];
+ for(let i=1;i<=7;i++){
+  const r=hashProduct(id,2000+i);
+  const price=r2(p.fair*(0.8+r*0.6));
+  out.push({day:i,price});
+ }
+ return out;
+}
+
+/* ================= ECONOMÍA ================= */
+const totalStock=()=>{let t=0;for(const k in S.stock)t+=S.stock[k];return t;};
+const cap=()=>250+(S.up.shelf||0)*150+(S.vanLv||0)*40;
+const mkCost=id=>{const p=byId[id];const base=(S.mk[id]??p.cost)||p.fair||1;return Math.max(.01,r2(base*(1-.04*(S.up.sup||0))*((S.event&&S.event.price)||1)));};
+const priceOf=id=>S.prices[id]??byId[id].fair;
+function addStock(pid,q){S.stock[pid]=(S.stock[pid]||0)+q;if(S.prices[pid]===undefined)S.prices[pid]=byId[pid].fair;}
+function logEconomy(kind,text,amount=0,actor='Sistema'){S.econLog=S.econLog||[];S.econLog.unshift({day:S.day,clock:S.clockMin,kind,text,amount,actor});if(S.econLog.length>80)S.econLog.length=80;save();}
+
+function buy(id,q,fill){
+ const c=mkCost(id),space=cap()-totalStock();
+ if(space<=0){toast('📦 ¡Almacén lleno!');return false;}
+ if(fill)q=space;
+ q=Math.min(q,space,Math.floor((S.cash||0)/c));
+ if(q<=0){toast('💸 No te llega el dinero de la caja.');return false;}
+ const total=r2(c*q);S.cash-=total;S.dd.buy+=total;S.tot.buy+=total;
+ addStock(id,q);logEconomy('Compra',`Compra de ${q} unidades de ${byId[id].name}`,total,'Mercado');
+ toast(`✅ Comprados ${q}× ${byId[id].name}`);save();updateHUD();
+ return true;
+}
+
+function publishOfferToMarket(pid,qty,price,kind){
+ if(!FB.online||!FB.db) return false;
+ try{
+  FB.db.collection('rooms').doc(ROOM).collection('marketOffers').add({
+   pid:pid,
+   qty:qty,
+   price:price,
+   kind:kind,
+   pname:FB.pname,
+   uid:FB.uid,
+   location:'Comercio online',
+   ts:firebase.firestore.FieldValue.serverTimestamp()
+  }).catch(()=>{});
+  return true;
+ }catch(e){return false;}
+}
+
+/* ================= ESTADO UI ================= */
+let buyQty=50;
+let brokerCurrentCategory='ALL';
+let CURRENT_DETAIL_ID=null;
+
+function renderBroker(){
+ const hasSuper=(S.properties||[]).some(id=>id==='est09');
+ const groups={};
+ PRODUCTS.forEach(p=>{(groups[p.cat]=groups[p.cat]||[]).push(p);});
+
+ let catHtml=`<div class="cat-item${brokerCurrentCategory==='ALL'?' active':''}" data-cat="ALL">📋 Todos <span class="badge-cat">${PRODUCTS.length}</span></div>`;
+ for(const sec of SECTIONS){
+  const secCats=CATS.filter(c=>c[3]===sec.id&&groups[c[0]]);
+  if(!secCats.length)continue;
+  catHtml+=`<div class="section-header">${sec.name}</div>`;
+  for(const c of secCats){
+   catHtml+=`<div class="cat-item${brokerCurrentCategory===c[0]?' active':''}" data-cat="${c[0]}">${c[2]} ${c[1]} <span class="badge-cat">${groups[c[0]].length}</span></div>`;
+  }
+ }
+ $('brokerCategories').innerHTML=catHtml;
+
+ const q=norm($('searchM').value);
+ const currentCat=brokerCurrentCategory;
+ $('searchWrap').style.display='flex';
+
+ const items=(currentCat==='ALL'?PRODUCTS:PRODUCTS.filter(p=>p.cat===currentCat)).filter(p=>!q||norm(p.name).includes(q));
+ let rows='';
+ items.forEach(p=>{
+  const stock=S.stock[p.id]||0;
+  const buyPrice=mkCost(p.id),sellPrice=priceOf(p.id);
+  const prev=S.mkPrev[p.id]||buyPrice;
+  const change=prev?((buyPrice-prev)/prev*100):0;
+  const changeStr=change>0.1?`<span class="trend-up">▲ +${change.toFixed(1)}%</span>`:change<-0.1?`<span class="trend-down">▼ ${change.toFixed(1)}%</span>`:'<span class="trend-eq">▬ 0.0%</span>';
+  const stockLabel=hasSuper?`<span class="badge-stock ${stock>0?'own':''}">${stock}</span>`:'<span class="badge-stock">-</span>';
+  rows+=`<tr data-row-kind="product" data-row-id="${p.id}">
+   <td class="col-emoji">${p.emoji}</td><td class="col-name">${p.name}</td><td class="col-cat">${CATNAME[p.cat]}</td>
+   <td class="col-buy">${fmt$(buyPrice)}</td><td class="col-sell">${fmt$(sellPrice)}</td>
+   <td class="col-change">${changeStr}</td><td class="col-stock">${stockLabel}</td></tr>`;
+ });
+ if(!rows)rows='<tr><td colspan="7" style="text-align:center;padding:20px;color:#8a7f68">No hay productos en esta categoría.</td></tr>';
+ const mainHtml=`<div class="broker-table-wrap"><table class="broker-table"><thead><tr>
+  <th class="col-emoji"></th><th class="col-name">Producto</th><th class="col-cat">Categoría</th><th class="col-buy">Precio Compra</th><th class="col-sell">Precio Venta</th><th class="col-change">Cambio 24h</th><th class="col-stock">Stock</th></tr></thead>
+  <tbody>${rows}</tbody></table></div>`;
+ $('brokerMain').innerHTML=mainHtml;
+
+ const modeLbl = FB.online
+   ? '🌐 <b>Online-Multijugador</b>: estás viendo ofertas de jugadores reales; se completan con hasta 100 comerciantes NPC si hay poco stock o huecos.'
+   : '🤖 <b>Offline-CPU</b>: hay hasta 100 comerciantes NPC que actúan como vendedores y compradores.';
+ $('brokerNote').innerHTML = modeLbl + '<br>👆 Haz clic en cualquier fila para ver el mercado de compradores y vendedores.';
+
+ renderOffers();
+
+ $('brokerCategories').querySelectorAll('.cat-item').forEach(el=>{
+  el.onclick=()=>{brokerCurrentCategory=el.dataset.cat;renderBroker();};
+ });
+ $('brokerMain').querySelectorAll('tr[data-row-kind]').forEach(row=>{
+  row.onclick=()=>openDetail(row.dataset.rowKind,row.dataset.rowId);
+ });
+}
+
+function renderOffers(){
+ const offersHtml=(S.offers||[]).length?S.offers.map(o=>{
+  const p=byId[o.pid];if(!p)return'';
+  return `<div class="orow"><span>${o.emoji||'🤝'} <b>${o.name}</b> ofrece ${o.qty}× ${p.emoji} ${p.name} · ${fmt$(o.price)}</span>
+   <button class="btn grn" data-buyoffer="${o.id}" ${S.cash>=o.price?'':'disabled'}>Comprar lote</button></div>`;
+ }).join(''):'<p style="font-size:.86rem;color:#8a7f68">Todavía no hay lotes publicados.</p>';
+ $('offersWrap').innerHTML=`<div class="sect" style="margin-top:12px"><h4>🤝 Ofertas de otros comerciantes</h4><div>${offersHtml}</div></div>`;
+ $('offersWrap').querySelectorAll('[data-buyoffer]').forEach(b=>{
+  b.onclick=()=>buyOfferLocal(b.dataset.buyoffer);
+ });
+}
+
+function buyOfferLocal(id){
+ const o=(S.offers||[]).find(x=>x.id===id);if(!o)return;
+ if((S.cash||0)<o.price){toast('🏪 La caja no llega.');return;}
+ if(o.qty>cap()-totalStock()){toast('📦 Almacén lleno.');return;}
+ S.cash-=o.price;addStock(o.pid,o.qty);S.offers=S.offers.filter(x=>x.id!==id);
+ logEconomy('Broker',`Compra de lote: ${o.qty} unidades de ${byId[o.pid].name}`,o.price,o.name);
+ toast(`🤝 Lote comprado a ${o.name}: ${o.qty}× ${byId[o.pid].name}`);
+ save();updateHUD();renderBroker();
+}
+
+/* ================= MODAL DETALLE ================= */
+function openDetail(kind,id){
+ const card=$('detailCard');
+ if(kind!=='product')return;
+ const p=byId[+id];if(!p)return;
+ CURRENT_DETAIL_ID=+id;
+ const market=generateMarket(p.id);
+ const history=generatePriceHistory(p.id);
+ const stock=S.stock[p.id]||0;
+
+ const sellerRows=market.sellers.map((s,i)=>`
+  <tr>
+   <td class="col-qty">${s.qty.toLocaleString('es-ES')}</td>
+   <td class="col-price price-buy">${fmt$(s.price)}</td>
+   <td class="location">${s.loc} · ${s.name}${s.isPlayer?'<span class="source-badge source-player">Jugador</span>':'<span class="source-badge source-npc">NPC</span>'}</td>
+   <td class="col-actions"><button class="btn buy-blue" data-buy-seller="${p.id}" data-idx="${i}">Comprar</button></td>
+  </tr>`).join('');
+ const buyerRows=market.buyers.map((b,i)=>`
+  <tr>
+   <td class="col-qty">${b.qty.toLocaleString('es-ES')}</td>
+   <td class="col-price price-sell">${fmt$(b.price)}</td>
+   <td class="location">${b.loc} · ${b.name}${b.isPlayer?'<span class="source-badge source-player">Jugador</span>':'<span class="source-badge source-npc">NPC</span>'}</td>
+   <td class="col-actions"><button class="btn sell-green" data-sell-buyer="${p.id}" data-idx="${i}">Vender</button></td>
+  </tr>`).join('');
+
+ const historyRows=history.map(h=>`<div class="price-history-row"><span>Día ${h.day}</span><span class="price-buy">${fmt$(h.price)}</span></div>`).join('');
+
+ const onlineBadge = FB.online
+   ? '<span class="source-badge source-player">🌐 Online</span>'
+   : '<span class="source-badge source-npc">🤖 CPU</span>';
+
+ card.innerHTML=`
+  <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
+   <div style="font-size:2.6rem;line-height:1">${p.emoji}</div>
+   <div style="flex:1;min-width:0">
+    <h2 style="margin-bottom:2px">${p.name}</h2>
+    <p style="margin:0;color:#6b6250;font-size:.85rem">${CATNAME[p.cat]} · Precio justo <b>${fmt$(p.fair)}</b> · En tu súper: <b>${stock} uds.</b> ${onlineBadge}</p>
+   </div>
+   <div style="text-align:right">
+    <div style="font-family:'Bungee';font-size:1.05rem;color:#1e9e50">${fmt$(mkCost(p.id))}</div>
+    <div style="font-size:.72rem;color:#8a7f68">Compra actual</div>
+   </div>
+  </div>
+
+  <div class="mtabs">
+   <div class="mtab active" data-mtab="data">Datos del mercado</div>
+   <div class="mtab" data-mtab="hist">Historial de precios</div>
+  </div>
+
+  <div class="mtab-body active" data-mtab-body="data">
+   <div class="market-section-title">📤 Vendedores</div>
+   <table class="market-table">
+    <thead><tr><th class="col-qty">Cantidad</th><th class="col-price">Precio</th><th>Ubicación</th><th class="col-actions"></th></tr></thead>
+    <tbody>${sellerRows||'<tr><td colspan="4" style="text-align:center;padding:12px;color:#8a7f68">Sin vendedores</td></tr>'}</tbody>
+   </table>
+
+   <div class="market-section-title">📥 Compradores</div>
+   <table class="market-table">
+    <thead><tr><th class="col-qty">Cantidad</th><th class="col-price">Precio</th><th>Ubicación</th><th class="col-actions"></th></tr></thead>
+    <tbody>${buyerRows||'<tr><td colspan="4" style="text-align:center;padding:12px;color:#8a7f68">Sin compradores</td></tr>'}</tbody>
+   </table>
+
+   <div class="sect" style="margin-top:10px"><h4>🛒 Compra directa (stock en tu súper)</h4>
+    <div class="rowflex" id="detailQchips"></div>
+    <div class="rowflex" style="margin-top:8px">
+     <button class="btn grn" id="detailBuyBtn">Comprar ×${buyQty}</button>
+     <button class="btn" id="detailFillBtn" title="Llenar">∞ Llenar</button>
+    </div>
+   </div>
+
+   ${FB.online?`
+    <div class="sect"><h4>📢 Publicar oferta online</h4>
+     <div class="rowflex">
+      <input id="pubPrice" type="number" min="0.01" step="0.01" placeholder="Precio/ud" style="width:110px">
+      <input id="pubQty" type="number" min="1" value="10" style="width:90px">
+      <button class="btn grn" id="pubSellBtn">Vender stock</button>
+      <button class="btn" id="pubBuyBtn">Quiero comprar</button>
+     </div>
+     <p class="note" style="font-size:.75rem;color:#8a7f68;margin-top:5px">Publica tu oferta para que otros jugadores la vean en su Centro Comercial.</p>
+    </div>`:''}
+  </div>
+
+  <div class="mtab-body" data-mtab-body="hist">
+   <div class="market-section-title">📈 Historial de precios (7 días)</div>
+   <div class="sect">${historyRows}</div>
+  </div>
+
+  <div style="text-align:right;margin-top:10px"><button class="btn ghost" id="closeDetailBtn">Cerrar ✖</button></div>
+ `;
+ $('detailModal').classList.add('open');
+
+ card.querySelectorAll('.mtab').forEach(t=>{
+  t.onclick=()=>{
+   card.querySelectorAll('.mtab').forEach(x=>x.classList.remove('active'));
+   card.querySelectorAll('.mtab-body').forEach(x=>x.classList.remove('active'));
+   t.classList.add('active');
+   card.querySelector(`[data-mtab-body="${t.dataset.mtab}"]`).classList.add('active');
+  };
+ });
+ card.querySelectorAll('[data-buy-seller]').forEach(btn=>{
+  btn.onclick=()=>{
+   const idx=+btn.dataset.idx;
+   const s=market.sellers[idx];
+   if(!s)return;
+   if((S.cash||0)<s.price){toast('🏪 La caja no llega.');return;}
+   if(1>cap()-totalStock()){toast('📦 Almacén lleno.');return;}
+   S.cash-=s.price;addStock(p.id,1);
+   logEconomy('Broker',`Compra a ${s.name}: 1× ${p.name}`,s.price,s.name);
+   toast(`✅ 1× ${p.name} comprado a ${s.name} por ${fmt$(s.price)}`);
+   s.qty--;save();updateHUD();openDetail('product',id);
+  };
+ });
+ card.querySelectorAll('[data-sell-buyer]').forEach(btn=>{
+  btn.onclick=()=>{
+   const idx=+btn.dataset.idx;
+   const b=market.buyers[idx];
+   if(!b)return;
+   if((S.stock[p.id]||0)<1){toast('📦 No tienes stock de este producto.');return;}
+   S.stock[p.id]--;
+   if(S.stock[p.id]<=0)delete S.stock[p.id];
+   S.cash+=b.price;
+   logEconomy('Broker',`Venta a ${b.name}: 1× ${p.name}`,b.price,b.name);
+   toast(`💰 1× ${p.name} vendido a ${b.name} por ${fmt$(b.price)}`);
+   b.qty--;save();updateHUD();openDetail('product',id);
+  };
+ });
+ const qc=card.querySelector('#detailQchips');
+ if(qc){
+  [10,50,200,500].forEach(qv=>{
+   const bt=document.createElement('button');bt.className='qchip'+(qv===buyQty?' sel':'');bt.textContent='×'+qv;
+   bt.onclick=()=>{buyQty=qv;qc.querySelectorAll('.qchip').forEach(x=>x.classList.remove('sel'));bt.classList.add('sel');card.querySelector('#detailBuyBtn').textContent='Comprar ×'+buyQty;};
+   qc.appendChild(bt);
+  });
+  card.querySelector('#detailBuyBtn').onclick=()=>{if(buy(p.id,buyQty,false)){openDetail('product',id);renderBroker();}};
+  card.querySelector('#detailFillBtn').onclick=()=>{if(buy(p.id,0,true)){openDetail('product',id);renderBroker();}};
+ }
+ card.querySelector('#pubSellBtn')?.addEventListener('click',()=>{
+  const price=parseFloat(card.querySelector('#pubPrice').value);
+  const qty=parseInt(card.querySelector('#pubQty').value,10)||1;
+  if(!price||price<=0){toast('⚠️ Introduce un precio válido.');return;}
+  if((S.stock[p.id]||0)<qty){toast('📦 No tienes suficiente stock.');return;}
+  S.stock[p.id]-=qty;if(S.stock[p.id]<=0)delete S.stock[p.id];
+  publishOfferToMarket(p.id,qty,price,'sell');
+  toast(`📢 Oferta publicada: ${qty}× ${p.name} a ${fmt$(price)}`);
+  save();updateHUD();openDetail('product',id);
+ });
+ card.querySelector('#pubBuyBtn')?.addEventListener('click',()=>{
+  const price=parseFloat(card.querySelector('#pubPrice').value);
+  const qty=parseInt(card.querySelector('#pubQty').value,10)||1;
+  if(!price||price<=0){toast('⚠️ Introduce un precio válido.');return;}
+  publishOfferToMarket(p.id,qty,price,'buy');
+  toast(`📢 Demanda publicada: quieres ${qty}× ${p.name} a ${fmt$(price)}`);
+  openDetail('product',id);
+ });
+
+ card.querySelector('#closeDetailBtn').onclick=()=>{$('detailModal').classList.remove('open');CURRENT_DETAIL_ID=null;};
+}
+$('detailModal').addEventListener('click',e=>{if(e.target.id==='detailModal'){$('detailModal').classList.remove('open');CURRENT_DETAIL_ID=null;}});
+
+/* ================= Chips cantidad y búsqueda ================= */
+(function(){
+ const qc=$('qchips');
+ [10,50,200,500].forEach(qv=>{
+  const b=document.createElement('button');b.className='qchip'+(qv===buyQty?' sel':'');b.textContent='×'+qv;
+  b.onclick=()=>{buyQty=qv;qc.querySelectorAll('.qchip').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');};
+  qc.appendChild(b);
+ });
+})();
+$('searchM').addEventListener('input',renderBroker);
+
+function applyDefaults(){
+ S.stock=S.stock||{};S.prices=S.prices||{};S.mk=S.mk||{};S.mkPrev=S.mkPrev||{};S.up=S.up||{shelf:0,sup:0};
+ S.properties=S.properties||[];S.landBuildings=S.landBuildings||{};
+ S.offers=S.offers||[];S.econLog=S.econLog||[];S.rel=S.rel||{};S.greeted=S.greeted||{};S.dd=S.dd||{buy:0};S.tot=S.tot||{buy:0};
+}
+setInterval(()=>{S=loadState()||S;applyDefaults();updateHUD();},5000);
+updateHUD();renderBroker();
+</script>
+</body>
+</html>

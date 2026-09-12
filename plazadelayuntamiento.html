@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SuperGanga Tycoon — Plaza del Ayuntamiento</title>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow+Semi+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+:root{--bg:#0f2f22;--paper:#fdf7ea;--paper2:#f2e7cd;--ink:#26221c;--red:#d93a2b;--red2:#a92417;
+--yellow:#ffcf3f;--green:#3ecf6f;--line:#e2d4b2;--shadow:#1e1a17}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Barlow Semi Condensed',sans-serif;color:var(--ink);background:
+ radial-gradient(1200px 500px at 50% -10%,#1b4a35 0%,transparent 60%),
+ repeating-linear-gradient(45deg,rgba(255,255,255,.015) 0 2px,transparent 2px 26px),var(--bg);
+ min-height:100vh;overflow-x:hidden}
+.num{font-variant-numeric:tabular-nums}button{font-family:inherit;cursor:pointer;user-select:none}
+.btn{border:2px solid var(--shadow);border-radius:8px;padding:6px 12px;font-weight:700;font-size:.88rem;
+ box-shadow:0 3px 0 var(--shadow);transition:transform .1s;background:var(--yellow)}
+.btn:hover{transform:translateY(-2px)}.btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--shadow)}
+.btn.red{background:var(--red);color:#fff}.btn.ghost{background:#fff}.btn.grn{background:var(--green);color:#fff}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.toast{background:var(--shadow);color:#fff;padding:9px 18px;border-radius:10px;border:2px solid var(--yellow);font-weight:600;animation:pop .25s;max-width:92vw;text-align:center}
+#toasts{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:150;display:flex;flex-direction:column;gap:8px;align-items:center}
+@keyframes pop{from{transform:scale(.7);opacity:0}}
+.topbar{position:sticky;top:0;z-index:60;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;
+ padding:8px 12px;background:linear-gradient(#0c281c,#0a2217);border-bottom:3px solid #1d5a41}
+.chip{background:#12382a;border:2px solid #1d5a41;color:#e9f5ec;border-radius:10px;padding:5px 11px;font-size:.92rem;
+ display:flex;align-items:center;gap:6px;box-shadow:0 3px 0 rgba(0,0,0,.3)}
+.chip b{color:#fff}
+.mini{width:64px;height:9px;background:rgba(0,0,0,.45);border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,.25)}
+.mini i{display:block;height:100%;transition:width .4s}
+#tbEnergy i{background:linear-gradient(90deg,#ffb347,var(--yellow))}
+.mcard{position:relative;z-index:10001;background:var(--paper);border:3px solid var(--shadow);border-radius:14px;max-width:900px;width:100%;padding:22px;
+ box-shadow:0 10px 0 var(--shadow),0 24px 50px rgba(0,0,0,.5);animation:pop .3s;max-height:92vh;overflow-y:auto;margin:20px auto}
+.mcard h2{font-family:'Bungee';color:var(--red);font-size:1.35rem;margin-bottom:8px}
+.mcard p{margin-bottom:8px;line-height:1.35}
+.sect{background:#fff;border:2px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+.sect h4{font-family:'Bungee';font-size:.9rem;color:var(--red);margin-bottom:6px}
+.orow{display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:1px dashed var(--line);padding:6px 0;font-size:.9rem;flex-wrap:wrap}
+.orow:last-child{border:none}
+.rowflex{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.rowflex input,.rowflex select{border:2px solid var(--line);border-radius:8px;padding:5px 8px;font-family:inherit;font-size:.85rem}
+#chatbox{max-height:220px;overflow-y:auto;font-size:.88rem;margin-bottom:8px;background:#faf6ed;border-radius:6px;padding:6px}
+#chatbox div{padding:3px 0;border-bottom:1px dotted #eee}
+.origin-detail{background:#fff3cd;border:2px dashed #e6b31e;border-radius:9px;padding:9px 12px;font-size:.85rem;line-height:1.35;margin-bottom:10px}
+.sumrow{display:flex;justify-content:space-between;padding:5px 4px;border-bottom:1px dashed var(--line);font-weight:600;font-size:.94rem}
+.sumrow.total{border-bottom:none;border-top:2px solid var(--shadow);margin-top:4px;font-family:'Bungee'}
+.empty-log{text-align:center;background:#fff3cd;border:2px dashed #e6b31e;border-radius:9px;padding:16px;color:#6b6250;font-size:.86rem}
+.note{font-size:.78rem;color:#6b6250;margin-top:4px}
+.land-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;padding:2px}
+.land-card{background:#f7f2e2;border:2px solid var(--line);border-radius:12px;padding:12px 10px;text-align:center;box-shadow:0 3px 0 rgba(0,0,0,.14);display:flex;flex-direction:column;min-width:0}
+.land-card h3{font-family:'Bungee';font-size:.78rem;color:var(--ink);line-height:1.25;min-height:2.4em;margin-bottom:4px}
+.land-card .land-meta{font-size:.72rem;color:#6b6250;margin:1px 0}
+.land-card .land-produce{font-size:.72rem;color:#5c5443;margin:5px 0;min-height:1.6em}
+.land-card .land-desc{font-size:.7rem;color:#8a7f68;line-height:1.25;margin-bottom:6px;min-height:2.4em}
+.land-card .land-price{font-family:'Bungee';font-size:.86rem;color:#1e9e50;margin:4px 0 8px}
+.land-card .land-owned{font-size:.68rem;font-weight:700;color:#176d36;background:#eaffef;border:1px solid var(--green);border-radius:6px;padding:2px 6px;margin-bottom:6px;display:inline-block}
+.land-card button{width:100%;background:#2e78e0;color:#fff;border-color:#173c2d;box-shadow:0 3px 0 #173c2d}
+.land-card button:disabled{background:#9fb6cf}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="chip">💼 Cartera <b class="num" id="tbWallet">€1.000.000</b></div>
+  <div class="chip">🏪 Caja <b class="num" id="tbCash">€0</b></div>
+  <div class="chip">⚡ <div class="mini" id="tbEnergy"><i style="width:100%"></i></div></div>
+  <div class="chip"><span id="tbMood">😊</span> Ánimo</div>
+  <div class="chip">📅 Día <b id="tbDay">1</b></div>
+  <div class="chip">🕗 <b id="tbClock">--:--</b></div>
+  <div class="chip" id="tbMode">🤖 Offline</div>
+  <button class="btn ghost" onclick="window.location.href='mi_ciudad.html'">🗺️ Volver a Mi ciudad</button>
+</div>
+
+<div class="mcard" id="plazaCard">
+  <button class="btn ghost" onclick="window.location.href='mi_ciudad.html'" style="margin-bottom:10px">← Cerrar</button>
+  <h2 style="margin-top:8px">⛲ Plaza del Ayuntamiento</h2>
+  <p class="origin-detail">Pedidos, ofertas, chat, compra de terrenos, lonja, contratos de suministro y pactos de precios — todo en vivo con Firebase. Es la misma plaza que ves dentro de tu súper, en tiempo real.</p>
+  <div class="sumrow"><span>💰 Caja · 💼 Cartera</span><span id="plazaBalances">—</span></div>
+  <div class="sect">
+   <h4>💬 Chat del barrio</h4>
+   <div id="chatbox"></div>
+   <div class="rowflex">
+    <input id="chatIn" placeholder="Escribe algo…" style="flex:1" autocomplete="off">
+    <button class="btn" id="sendChatBtn">Enviar</button>
+    <button class="btn red" id="clearChatBtn" title="Borrar historial" style="flex-shrink:0;padding:6px 10px">🗑️</button>
+   </div>
+   <p class="note" id="chatModeNote"></p>
+  </div>
+  <div class="sect"><h4>📦 Pedidos de vecinos (<span id="ordersCount">0</span>)</h4>
+   <div id="ordersList"></div>
+  </div>
+  <div class="sect"><h4>🤝 Ofertas de otros tenderos (<span id="offersCount">0</span>)</h4>
+   <div id="offersList"></div>
+   <div class="rowflex" id="publishOfferForm" style="margin-top:6px;display:none">
+    <select id="ofProd"></select>
+    <input id="ofQty" type="number" min="1" value="10" style="width:70px">
+    <input id="ofPrice" type="number" min="1" value="20" style="width:80px">
+    <button class="btn grn" id="pubOfferBtn">Publicar lote</button>
+   </div>
+   <p class="note" id="offerFormHint" style="display:none">Compra stock en el Mercado para poder publicar lotes.</p>
+  </div>
+  <div class="sect"><h4>🏛️ Compra de Terrenos (Se actualiza cada 5 minutos)</h4>
+   <div id="landSalesList"></div>
+  </div>
+  <div class="sect"><h4>🏛️ Lonja de Comercio</h4>
+   <div id="lonjaList"></div>
+   <div class="rowflex" id="publishLonjaForm" style="margin-top:6px;display:none">
+    <select id="lonjaProd"></select>
+    <input id="lonjaQty" type="number" min="1" value="10" style="width:70px">
+    <input id="lonjaPrice" type="number" min="1" value="20" style="width:80px">
+    <button class="btn grn" id="pubLonjaBtn">Publicar lote en lonja</button>
+   </div>
+  </div>
+  <div class="sect"><h4>📄 Contratos de Suministro (<span id="contractsCount">0</span>)</h4>
+   <div id="contractsListInner"></div>
+   <div class="rowflex" id="createContractForm" style="margin-top:6px;display:none">
+    <select id="contProd"></select>
+    <input id="contQty" type="number" min="1" value="20" style="width:62px">
+    <input id="contPrice" type="number" min="1" value="5" style="width:62px" placeholder="Precio/ud">
+    <input id="contDays" type="number" min="1" value="5" style="width:50px">
+    <button class="btn grn" id="createContractBtn">Crear contrato</button>
+   </div>
+  </div>
+  <div class="sect"><h4>🤝 Pactos de Precios (<span id="cartelsCount">0</span>/5)</h4>
+   <p style="font-size:.85rem">Forma un cartel en un distrito para un tipo de productos. Los precios acordados serán <b>fijos e inmutables</b> durante <b>24 horas</b>.</p>
+   <div class="rowflex">
+    <select id="cartelCategory" style="min-width:170px"></select>
+    <select id="cartelDistrict" style="min-width:140px"></select>
+   </div>
+   <div class="rowflex" style="margin-top:6px">
+    <input id="cartelMinPrice" type="number" min="0.01" step="0.01" placeholder="Precio fijo (ej: 2.5)" style="width:140px">
+    <input id="cartelStock" type="number" min="1" placeholder="Existencias (uds.)" style="width:140px">
+    <input id="cartelSlogan" type="text" maxlength="60" placeholder="Eslogan del cartel (opcional)" style="flex:1;min-width:180px">
+   </div>
+   <div class="rowflex" style="margin-top:6px">
+    <button class="btn grn" id="createCartelBtn">Formar Cartel</button>
+   </div>
+   <p class="note">⚠️ Una vez firmado, los precios no se pueden modificar en tu súper durante esas 24 horas. Máximo 5 carteles activos por jugador.</p>
+   <div id="cartelsListInner" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+'use strict';
+/* ================= ESTADO COMPARTIDO ================= */
+const KEY='superTycoonV2';
+function loadState(){
+ try{const d=JSON.parse(localStorage.getItem(KEY));return d;}catch(e){return null;}
+}
+let S=loadState()||{};
+if(!S||S.started!==true||S.setupComplete!==true){
+ window.location.replace('mi_ciudad.html');
+ throw new Error('No hay partida iniciada. Empieza una partida en mi_ciudad.html.');
+}
+// Compatibilidad
+S.auctions=S.auctions||[];S.supplyContracts=S.supplyContracts||[];S.priceCartels=S.priceCartels||[];
+S.priceCartelBaseline=S.priceCartelBaseline||{};
+S.orders=S.orders||[];S.offers=S.offers||[];S.stock=S.stock||{};S.prices=S.prices||{};
+S.ownedNodes=S.ownedNodes||{};S.up=S.up||{};
+
+// NUEVO: estado para los terrenos visibles (3 rotativos)
+if(!S.landDisplayLastUpdate) S.landDisplayLastUpdate = 0;
+if(!S.currentLandDisplay) S.currentLandDisplay = [];
+
+function save(){localStorage.setItem(KEY,JSON.stringify(S));}
+const $=id=>document.getElementById(id);
+const fmt$=n=>'€'+(+n||0).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
+const r2=n=>Math.round(n*100)/100;
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+const cap=()=>250+(S.up.shelf||0)*150+(S.vanLv||0)*40;
+const totalStock=()=>{let t=0;for(const k in S.stock)t+=S.stock[k];return t;};
+function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;
+ $('toasts').appendChild(t);setTimeout(()=>t.remove(),3000);}
+function logEconomy(kind,text,amount=0,actor='Sistema'){
+ S.econLog=S.econLog||[];
+ S.econLog.unshift({day:S.day,clock:S.clockMin,kind,text,amount,actor});
+ if(S.econLog.length>80)S.econLog.length=80;
+ save();
+}
+
+/* ================= CATÁLOGO (idéntico al de mi_ciudad.html) ================= */
+const CATS=[['F','Frutería','🍎'],['V','Verdulería','🥕'],['L','Lácteos y huevos','🥛'],['C','Carnicería','🥩'],
+['X','Pescadería','🐟'],['P','Panadería','🥖'],['B','Bebidas','🥤'],['S','Snacks','🥨'],['D','Dulces','🍫'],
+['N','Despensa','🥫'],['M','Desayuno','☕'],['Z','Congelados','🧊'],['H','Limpieza','🧴'],
+['A','Cuidado personal','🪥'],['T','Mascotas','🐶'],['Y','Bebés','🍼'],['G','Gourmet','🍾']];
+const CATNAME=Object.fromEntries(CATS.map(c=>[c[0],c[1]]));
+const RAW={
+F:[['🍎','Manzana',.6],['🍌','Plátano de Canarias',.5],['🍊','Naranja',.5],['🍐','Pera',.7],['🍇','Uvas',1.4],['🍓','Fresas',1.8],['🍉','Sandía',2.2],['🍈','Melón',1.9],['🍍','Piña',1.7],['🥭','Mango',1.5],['🥑','Aguacate',1.9],['🍋','Limón',.6],['🍑','Melocotón',1.1],['🥝','Kiwi',1.2],['🍒','Cerezas',2.6],['🫐','Arándanos',2.8],['🥥','Coco',1.6]],
+V:[['🥕','Zanahoria (1 kg)',.4],['🍅','Tomate (1 kg)',.6],['🥔','Patatas (1 kg)',.35],['🧅','Cebolla (1 kg)',.4],['🥬','Lechuga',.7],['🥦','Brócoli',1],['🌽','Mazorca de maíz',.8],['🥒','Pepino',.6],['🫑','Pimiento',.9],['🍆','Berenjena',.8],['🥐','Calabacín',.7],['🧄','Ajo',.5],['🍄','Champiñones',1.1],['🎃','Calabaza',.9],['🫛','Guisantes',1]],
+L:[['🥛','Leche entera',.9],['🥛','Leche sin lactosa',1.3],['🧀','Queso curado',2.8],['🧀','Queso fresco',2.2],['🧀','Queso rallado',1.9],['🥣','Yogur natural',.7],['🥣','Yogur de sabores',.9],['🧈','Mantequilla',1.8],['🍶','Nata para cocinar',1.2],['🥚','Huevos (docena)',1.6],['🍮','Flan',1],['🍦','Helado tarrina',2.9]],
+C:[['🍗','Pollo entero',3.2],['🍗','Pechuga de pollo',3.8],['🥩','Ternera',5.5],['🥩','Chuletas de cerdo',4.2],['🥓','Bacon',2.9],['🌭','Salchichas',2.4],['🍖','Costillas',4.6],['🥩','Carne picada',3.9],['🦃','Pavo',3.6],['🍗','Alitas de pollo',2.8],['🥓','Jamón serrano',6.8],['🍖','Chorizo',2.6],['🥩','Chuletón de vaca',7.9],['🥩','Morcilla',2.2]],
+X:[['🐟','Merluza',4.8],['🐟','Salmón',6.2],['🦐','Gambas',5.6],['🐟','Sardinas',2.9],['🦑','Calamares',4.4],['🐟','Atún fresco',5.9],['🦪','Mejillones',3.4],['🐙','Pulpo',7.4],['🐟','Trucha',4.1]],
+P:[['🥖','Baguette',.8],['🍞','Pan de molde',1.2],['🥐','Croissant',.9],['🥯','Bagel',1],['🍩','Dónut',1.1],['🧁','Magdalena',.8],['🥧','Tarta de manzana',3.5],['🍪','Galletas caseras',1.6],['🥨','Pretzel',.9],['🍰','Tarta de chocolate',4.2],['🍞','Pan integral',1.4],['🥖','Chapata',.7]],
+B:[['💧','Agua mineral 1,5 L',.5],['🥤','Refresco de cola',1.1],['🥤','Refresco de naranja',1],['🧃','Zumo de naranja',1.4],['🧃','Zumo multifrutas',1.5],['🍺','Cerveza',1.3],['🍺','Cerveza artesana',2.4],['🍷','Vino tinto',4.5],['🍾','Cava',5.8],['☕','Café molido',3.2],['🍵','Té verde',2.1],['⚡','Bebida energética',1.7],['🥥','Agua de coco',1.9],['🍶','Kombucha',2.6],['🍋','Limonada',1.3]],
+S:[['🥔','Patatas fritas',1.2],['🍿','Palomitas',1],['🥜','Cacahuetes',1.1],['🥜','Almendras',2.2],['🌰','Mix de frutos secos',2.6],['🍿','Maíz para palomitas',.9],['🥖','Colines',.8],['🧀','Nachos',1.5],['🫒','Aceitunas',1.2],['🥜','Pistachos',2.9],['🧀','Snacks de queso',1.3],['🍫','Barritas de cereales',1.7]],
+D:[['🍫','Tableta de chocolate',1.3],['🍫','Chocolate con almendras',1.7],['🍬','Caramelos',.9],['🍭','Piruletas',.7],['🍬','Regaliz',.8],['🍬','Gominolas',1.1],['🍪','Galletas de chocolate',1.4],['🍪','Galletas rellenas',1.6],['🍩','Bollería industrial',1.5],['🍫','Cacao en polvo',2],['🍬','Chicles',.6],['🍮','Natillas',1.1]],
+N:[['🍚','Arroz (1 kg)',1],['🍝','Espaguetis',.9],['🍜','Fideos',.8],['🫙','Tomate frito',1.1],['🥫','Atún en lata',1.4],['🫘','Alubias',1],['🫘','Lentejas',1],['🫘','Garbanzos',1],['🫒','Aceite de oliva',4.2],['🌻','Aceite de girasol',2.6],['🧂','Sal',.5],['🍯','Miel',2.8],['🌶️','Especias',1.2],['🍶','Vinagre',1.1],['🥫','Conservas de verduras',1.3]],
+M:[['☕','Cacao soluble',2.4],['🥣','Cereales de desayuno',2.2],['🥣','Cereales infantiles',2.6],['🍞','Biscotes',1.3],['🍓','Mermelada',1.7],['🧈','Margarina',1.5],['🍫','Crema de cacao',2.7],['🥛','Leche de avena',1.8],['🍵','Té en bolsitas',1.9],['🍪','Galletas María',1.1],['🧇','Gofres',1.8]],
+Z:[['🍕','Pizza congelada',2.8],['🥟','Empanadillas',2.2],['🍤','Langostinos congelados',4.9],['🥦','Verduras congeladas',1.6],['🍟','Patatas congeladas',1.8],['🍦','Helado familiar',3.6],['🧊','Hielo (bolsa)',.8],['🍗','Nuggets',2.7],['🐟','Palitos de pescado',2.5],['🥟','Croquetas',2.3]],
+H:[['🧴','Detergente líquido',3.4],['🧺','Cápsulas lavadora',4.6],['🧼','Lavavajillas',1.6],['🧽','Estropajos',1],['🧻','Papel higiénico (12 rollos)',3.8],['🧻','Papel de cocina',2.2],['🧴','Lejía',1.3],['🧴','Limpiasuelos',2],['🧴','Limpia cristales',1.8],['🗑️','Bolsas de basura',1.7],['🧴','Suavizante',2.4],['🌸','Ambientador',2.1]],
+A:[['🧴','Champú',2.6],['🧴','Gel de ducha',2],['🧼','Pastilla de jabón',.9],['🪥','Pasta de dientes',1.7],['🪥','Cepillo de dientes',1.4],['🧴','Desodorante',2.3],['🧻','Pañuelos',1.1],['🧴','Crema hidratante',3.1],['🧴','Protector solar',4.8],['🪒','Cuchillas de afeitar',3.9],['🧴','Laca',2.5],['🦷','Hilo dental',1.2]],
+T:[['🐶','Pienso para perro',3.8],['🐱','Pienso para gato',3.4],['🦴','Snacks para perro',1.8],['🐾','Arena para gato',3.2],['🐠','Comida para peces',1.4],['🐹','Pienso para roedores',1.6],['🦮','Collar',2.9],['🧸','Juguete para mascota',2.4]],
+Y:[['🍼','Leche infantil',6.5],['🥣','Papillas',2.4],['🧷','Pañales',5.2],['🧻','Toallitas',2.1],['🥣','Potitos',1.6]],
+G:[['🧀','Queso manchego',6.5],['🥩','Solomillo',8.9],['🍾','Champán',12],['🐟','Caviar',15],['🍤','Bogavante',12.5],['🫒','Aceite de trufa',7.8],['🍫','Chocolate belga',4.9],['🧀','Parmesano',5.6],['🍷','Vino reserva',8.5],['🥓','Jamón ibérico',12.8]]};
+const CAT_UNLOCK={A:2,Z:3,T:4,Y:5,G:8};
+const UNLOCK_OVR={'Cava':3,'Helado familiar':2,'Bebida energética':2,'Kombucha':4,'Tarta de chocolate':2,'Chuletón de vaca':6,'Pulpo':4,'Bogavante':7};
+const POP_OVR={'Leche entera':10,'Huevos (docena)':10,'Pan de molde':9,'Baguette':9,'Agua mineral 1,5 L':9,'Refresco de cola':9,'Arroz (1 kg)':8,'Papel higiénico (12 rollos)':8,'Patatas (1 kg)':8,'Plátano de Canarias':9,'Cerveza':8,'Detergente líquido':7,'Tomate (1 kg)':8,'Manzana':8};
+const PRODUCTS=[];
+(function(){let id=0;for(const [cat] of CATS)for(const [e,n,c] of RAW[cat]){
+ let h=0;for(let i=0;i<n.length;i++)h=(h*31+n.charCodeAt(i))>>>0;
+ PRODUCTS.push({id:id++,emoji:e,name:n,cost:c,cat,pop:POP_OVR[n]??(4+h%6),unlock:UNLOCK_OVR[n]??CAT_UNLOCK[cat]??1,fair:+(c*1.55).toFixed(2)});}})();
+const byId=Object.fromEntries(PRODUCTS.map(p=>[p.id,p]));
+
+/* ================= TERRENOS Y DISTRITOS (idéntico al de mi_ciudad.html) ================= */
+const NODOS_LIBRES=[
+ { id:'node01', name:'Parcela Ruzafa', price:12000, type:'Residential', lat:39.4611, lng:-0.3757, rent:120 },
+ { id:'node02', name:'Suelo El Carmen', price:18000, type:'Commercial', lat:39.4772, lng:-0.3789, rent:200 },
+ { id:'node03', name:'Terreno Benimaclet', price:15000, type:'Residential', lat:39.4838, lng:-0.3644, rent:160 },
+ { id:'node04', name:'Lote Malvarrosa', price:14000, type:'Commercial', lat:39.4720, lng:-0.3280, rent:140 },
+ { id:'node05', name:'Zona Campanar', price:16000, type:'Residential', lat:39.4775, lng:-0.3956, rent:170 },
+ { id:'node06', name:'Área Patraix', price:8000, type:'Land', lat:39.4568, lng:-0.3812, rent:80 },
+ { id:'node07', name:'Espacio Jesús', price:7500, type:'Land', lat:39.4705, lng:-0.3860, rent:75 },
+ { id:'node08', name:'Parcela La Torre', price:9000, type:'Land', lat:39.4740, lng:-0.3580, rent:90 },
+ { id:'node09', name:'Suelo Cabanyal', price:13000, type:'Residential', lat:39.4632, lng:-0.3318, rent:130 },
+ { id:'node10', name:'Terreno Viveros', price:18000, type:'Amenity', lat:39.4805, lng:-0.3677, rent:180 },
+ { id:'node11', name:'Lote Colón', price:22000, type:'Commercial', lat:39.4691, lng:-0.3736, rent:230 },
+ { id:'node12', name:'Huerta de Benimàmet', price:10000, type:'Farm', lat:39.5030, lng:-0.4170, rent:100 },
+ { id:'node13', name:'Parcela Aragón', price:14000, type:'Residential', lat:39.4720, lng:-0.3610, rent:140 },
+ { id:'node14', name:'Área Turia', price:15000, type:'Amenity', lat:39.4705, lng:-0.3860, rent:150 },
+ { id:'node15', name:'Polígono Mislata', price:28000, type:'Factory', lat:39.4746, lng:-0.4170, rent:300 },
+ { id:'node16', name:'Terreno Quart', price:7000, type:'Land', lat:39.4790, lng:-0.4430, rent:70 },
+ { id:'node17', name:'Lote Alboraia', price:12000, type:'Residential', lat:39.4736, lng:-0.3788, rent:120 },
+ { id:'node18', name:'Zona Burjassot', price:13000, type:'Residential', lat:39.4780, lng:-0.4000, rent:130 },
+ { id:'node19', name:'Parcela Paterna', price:11000, type:'Farm', lat:39.5030, lng:-0.4400, rent:110 },
+ { id:'node20', name:'Polígono Manises', price:30000, type:'Factory', lat:39.4910, lng:-0.4560, rent:320 },
+ { id:'node21', name:'Terreno Mestalla', price:16000, type:'Amenity', lat:39.4740, lng:-0.3580, rent:160 },
+ { id:'node22', name:'Lote Beniferri', price:14000, type:'Residential', lat:39.4775, lng:-0.3956, rent:140 },
+ { id:'node23', name:'Zona Campanar II', price:16000, type:'Commercial', lat:39.4772, lng:-0.3789, rent:160 },
+ { id:'node24', name:'Parcela Ciutat Vella', price:11000, type:'Land', lat:39.4699, lng:-0.3763, rent:110 },
+ { id:'node25', name:'Suelo Russafa', price:13000, type:'Residential', lat:39.4618, lng:-0.3740, rent:130 },
+ { id:'node26', name:'Terreno El Pla', price:12000, type:'Residential', lat:39.4705, lng:-0.3860, rent:120 },
+ { id:'node27', name:'Lote La Saïdia', price:13000, type:'Residential', lat:39.4838, lng:-0.3644, rent:130 },
+ { id:'node28', name:'Zona Marxalenes', price:8000, type:'Land', lat:39.4772, lng:-0.3789, rent:80 },
+ { id:'node29', name:'Huerta de Paterna', price:10500, type:'Farm', lat:39.5030, lng:-0.4170, rent:105 },
+ { id:'node30', name:'Suelo Vara de Quart', price:9000, type:'Land', lat:39.4772, lng:-0.3789, rent:90 }
+];
+const DISTRICTS=[
+ {id:'ciutatvella',name:'Ciutat Vella'},{id:'ruzaffa',name:'Ruzafa'},{id:'benimaclet',name:'Benimaclet'},
+ {id:'malvarrosa',name:'Malvarrosa'},{id:'campanar',name:'Campanar'},{id:'patraix',name:'Patraix'},
+ {id:'cabanyal',name:'Cabanyal'},{id:'viveros',name:'Viveros'},{id:'colon',name:'Colón'},
+ {id:'benimamet',name:'Benimàmet'},{id:'mislata',name:'Mislata'},{id:'alboraia',name:'Alboraia'},
+ {id:'burjassot',name:'Burjassot'},{id:'paterna',name:'Paterna'},{id:'manises',name:'Manises'},
+ {id:'mestalla',name:'Mestalla'},{id:'beniferri',name:'Beniferri'},{id:'la_saidia',name:'La Saïdia'},
+ {id:'marxalenes',name:'Marxalenes'}];
+const DISTRICT_NAMES=Object.fromEntries(DISTRICTS.map(d=>[d.id,d.name]));
+const NODE_ICONS = {Land:'🟩', Residential:'🏘️', Farm:'🌾', Factory:'🏭', Commercial:'🏬', Amenity:'🎡', Service:'🏛️', Utility:'⚙️', Transport:'🚉'};
+const translateType = (type) => ({Land:'Terreno', Residential:'Residencial', Farm:'Granja', Factory:'Fábrica', Commercial:'Comercial', Amenity:'Equipamiento', Service:'Servicio', Utility:'Utilidad', Transport:'Transporte'}[type]||type);
+
+/* ================= GEMINI API KEY (idéntico a mi_ciudad.html / index.html) ================= */
+const LS_API_KEY='geminiApiKey';
+const CLAVE_CIFRADO='CursoIA-HTML-2026';
+const API_KEY_INICIAL_CIFRADA='AiRcMg1xE2N+HwAienwGbXIzAyI0WQx0Tww+LDsUcVJdRzEeSxJfEzZ/Cmw7CkofQlFxNBI=';
+function cifrarTexto(texto){
+ if(!texto)return'';
+ let combinado='';
+ for(let i=0;i<texto.length;i++)combinado+=String.fromCharCode(texto.charCodeAt(i)^CLAVE_CIFRADO.charCodeAt(i%CLAVE_CIFRADO.length));
+ return btoa(unescape(encodeURIComponent(combinado)));
+}
+function descifrarTexto(cifrado){
+ if(!cifrado)return'';
+ try{
+  const combinado=decodeURIComponent(escape(atob(cifrado)));
+  let texto='';
+  for(let i=0;i<combinado.length;i++)texto+=String.fromCharCode(combinado.charCodeAt(i)^CLAVE_CIFRADO.charCodeAt(i%CLAVE_CIFRADO.length));
+  return texto;
+ }catch(e){return'';}
+}
+function pareceApiKeyValida(texto){return typeof texto==='string'&&texto.trim().length>10;}
+function obtenerApiKey(){
+ const guardado=localStorage.getItem(LS_API_KEY);
+ if(guardado){
+  const descifrado=descifrarTexto(guardado);
+  if(pareceApiKeyValida(descifrado))return descifrado;
+  if(pareceApiKeyValida(guardado)){localStorage.setItem(LS_API_KEY,cifrarTexto(guardado));return guardado;}
+ }
+ localStorage.setItem(LS_API_KEY,API_KEY_INICIAL_CIFRADA);
+ return descifrarTexto(API_KEY_INICIAL_CIFRADA);
+}
+const MODELOS_PREFERIDOS=['gemini-2.5-flash','gemini-2.5-flash-lite','gemini-2.0-flash'];
+const MODEL_TIMEOUT_MS=30000;
+let modelosGeminiDisponibles=[];
+let modelosGeminiClave='';
+function esModeloGenerativo(modelo){
+ const nombre=`${modelo.name||''} ${modelo.baseModelId||''} ${modelo.displayName||''}`.toLowerCase();
+ const soportaContenido=(modelo.supportedGenerationMethods||[]).includes('generateContent');
+ return soportaContenido&&nombre.includes('gemini')&&!/(tts|embedding|image|live|audio)/.test(nombre);
+}
+async function listarModelosGemini(apiKey){
+ if(modelosGeminiClave===apiKey&&modelosGeminiDisponibles.length)return modelosGeminiDisponibles;
+ const respuesta=await fetch(`https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000&key=${encodeURIComponent(apiKey)}`);
+ const datos=await respuesta.json();
+ if(!respuesta.ok)throw new Error(datos.error?.message||`HTTP ${respuesta.status}`);
+ const disponibles=(datos.models||[]).filter(esModeloGenerativo)
+  .map(modelo=>modelo.baseModelId||String(modelo.name||'').replace(/^models\//,'')).filter(Boolean);
+ const ordenados=[...MODELOS_PREFERIDOS.filter(m=>disponibles.includes(m)),...disponibles.filter(m=>!MODELOS_PREFERIDOS.includes(m))];
+ if(!ordenados.length)throw new Error('La clave no tiene modelos Gemini compatibles con generateContent.');
+ modelosGeminiClave=apiKey;modelosGeminiDisponibles=ordenados.slice(0,6);
+ return modelosGeminiDisponibles;
+}
+async function fetchGeminiWithModel(apiKey,model,prompt,opciones={}){
+ const{maxOutputTokens=260,sinThinking=true}=opciones;
+ const controlador=new AbortController();
+ const temporizador=setTimeout(()=>controlador.abort(),MODEL_TIMEOUT_MS);
+ const body={contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.9,maxOutputTokens}};
+ if(sinThinking)body.generationConfig.thinkingConfig={thinkingBudget:0};
+ try{
+  const respuesta=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,{
+   method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:controlador.signal});
+  const datos=await respuesta.json();
+  if(!respuesta.ok){
+   const mensaje=datos.error?.message||`HTTP ${respuesta.status}`;
+   if(sinThinking&&/invalid argument|thinking|unknown field/i.test(mensaje))return fetchGeminiWithModel(apiKey,model,prompt,{maxOutputTokens,sinThinking:false});
+   const error=new Error(`${model}: ${mensaje}`);error.status=respuesta.status;throw error;
+  }
+  const texto=datos.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('').trim();
+  if(!texto)throw new Error(`${model}: la respuesta no incluyó texto.`);
+  return{texto,model};
+ }catch(error){
+  if(error?.name==='AbortError')throw new Error(`Tiempo de espera agotado con ${model}.`);
+  throw error;
+ }finally{clearTimeout(temporizador);}
+}
+async function solicitarTextoGemini(apiKey,prompt,opciones={}){
+ const modelos=await listarModelosGemini(apiKey);
+ let ultimoError=null;
+ for(const model of modelos){
+  try{return await fetchGeminiWithModel(apiKey,model,prompt,opciones);}catch(error){ultimoError=error;}
+ }
+ throw ultimoError||new Error('No se encontró un modelo disponible para atender la solicitud.');
+}
+
+/* ================= BOTS (charla del barrio; usan Gemini cuando hay clave válida) ================= */
+const BOTS=[
+ {id:'b1',name:'Marta',emoji:'👩'},{id:'b2',name:'Ahmed',emoji:'🧔'},
+ {id:'b3',name:'Rosa',emoji:'👵'},{id:'b4',name:'Iván',emoji:'🧑‍🦱'},
+ {id:'b5',name:'Chloe',emoji:'👱‍♀️'}];
+const REPLIES=['¿Me fías una bolsa de leche? 😅','Tu súper tiene los mejores precios del barrio.','¿Visteis la oferta del día? 👀',
+ 'Marta dice que sus tomates son mejores que los tuyos 😏','¡Hoy toca paella en mi casa!','¿Alguien sabe si mañana llueve?',
+ 'El bar está hasta arriba esta noche 🍻','Necesito papel higiénico URGENTE 🧻','¿Cuándo abres la sección gourmet? 👑',
+ 'Mi nevera hace ruidos raros…','¡Ánimo con el negocio, vecin@!'];
+/* ================= FIREBASE (misma config y mismas colecciones que mi_ciudad.html) ================= */
+const FIREBASE_CONFIG={apiKey:"AIzaSyAonZFfeUCTELdFUhQrPADOPafFA0_Tzeg",authDomain:"juegobarrio-fbe55.firebaseapp.com",projectId:"juegobarrio-fbe55"};
+let FB={db:null,uid:null};
+const ROOM=S.room||'barrio-1';   // la sala real de tu partida, no un parámetro de URL
+const chatKey=()=>'barrioChat_'+ROOM;
+const CHAT_RETENTION_MS=3*24*60*60*1000; // se guardan los mensajes hasta un máximo de 3 días
+function loadChatLog(){try{
+ const cutoff=Date.now()-CHAT_RETENTION_MS;
+ return (JSON.parse(localStorage.getItem(chatKey()))||[]).filter(m=>!m.ts||m.ts>=cutoff);
+}catch(e){return[];}}
+function saveChatLog(){try{localStorage.setItem(chatKey(),JSON.stringify(CHAT));}catch(e){}}
+let CHAT=loadChatLog();
+async function clearChat(){
+ if(!confirm('¿Borrar todo el historial del chat del barrio?'))return;
+ CHAT=[];saveChatLog();renderChatbox();
+ if(FB.db){
+  try{
+   const snap=await FB.db.collection('rooms').doc(ROOM).collection('chat').get();
+   const batch=FB.db.batch();snap.forEach(d=>batch.delete(d.ref));await batch.commit();
+  }catch(e){}
+ }
+ toast('🗑️ Chat borrado.');
+}
+// Precarga en segundo plano de los modelos Gemini disponibles, para que el primer
+// mensaje del chat no pague el viaje extra de "listar modelos".
+listarModelosGemini(obtenerApiKey()).catch(()=>{});
+
+function initFirebase(){
+ try{firebase.initializeApp(FIREBASE_CONFIG);}catch(e){}
+ firebase.auth().signInAnonymously().then(cr=>{
+  FB.uid=cr.user.uid;FB.db=firebase.firestore();
+  // Solo se leen mensajes de los últimos 3 días; los más antiguos ya no
+  // aparecen y se van limpiando en segundo plano con pruneOldChat().
+  const cutoffTs=firebase.firestore.Timestamp.fromMillis(Date.now()-CHAT_RETENTION_MS);
+  FB.db.collection('rooms').doc(ROOM).collection('chat')
+   .where('ts','>=',cutoffTs).orderBy('ts','desc').limit(30).onSnapshot(s=>{
+    CHAT=[];s.forEach(d=>{const m=d.data();CHAT.push({name:m.name,emoji:m.emoji||'🙂',msg:m.msg});});
+    CHAT.reverse();renderChatbox();
+   },()=>{
+    // Si el índice compuesto where+orderBy aún no existe, se cae a la
+    // consulta simple (sin filtrar por fecha) para que el chat no se rompa.
+    FB.db.collection('rooms').doc(ROOM).collection('chat')
+     .orderBy('ts','desc').limit(30).onSnapshot(s=>{
+      CHAT=[];s.forEach(d=>{const m=d.data();CHAT.push({name:m.name,emoji:m.emoji||'🙂',msg:m.msg});});
+      CHAT.reverse();renderChatbox();
+     });
+   });
+  pruneOldChat();
+  FB.db.collection('rooms').doc(ROOM).collection('offers').onSnapshot(s=>{
+   S.offers=[];s.forEach(d=>{const o=d.data();o.fbId=d.id;S.offers.push(o);});renderPlaza();
+  });
+  FB.db.collection('rooms').doc(ROOM).collection('orders').onSnapshot(s=>{
+   S.orders=[];s.forEach(d=>{const o=d.data();o.fbId=d.id;S.orders.push(o);});renderPlaza();
+  });
+  FB.db.collection('rooms').doc(ROOM).collection('auctions').onSnapshot(s=>{
+   S.auctions=[];s.forEach(d=>{const a=d.data();a.fbId=d.id;S.auctions.push(a);});renderPlaza();
+  });
+  FB.db.collection('rooms').doc(ROOM).collection('contracts').onSnapshot(s=>{
+   S.supplyContracts=[];s.forEach(d=>{const c=d.data();c.fbId=d.id;S.supplyContracts.push(c);});renderPlaza();
+  });
+  FB.db.collection('rooms').doc(ROOM).collection('cartels').onSnapshot(s=>{
+   S.priceCartels=[];s.forEach(d=>{const c=d.data();c.fbId=d.id;S.priceCartels.push(c);});
+   enforceFixedPrices();renderPlaza();
+  });
+  updateHUD();
+  updateChatModeNote();
+ }).catch(e=>{console.warn('Firebase error:',e);toast('⚠️ No se pudo conectar con Firebase, modo local.');});
+}
+// Limpieza silenciosa (best-effort) de mensajes de más de 3 días, para que
+// la colección de chat no crezca sin límite. No pasa nada si falla.
+async function pruneOldChat(){
+ if(!FB.db)return;
+ try{
+  const cutoffTs=firebase.firestore.Timestamp.fromMillis(Date.now()-CHAT_RETENTION_MS);
+  const snap=await FB.db.collection('rooms').doc(ROOM).collection('chat')
+   .where('ts','<',cutoffTs).limit(100).get();
+  if(snap.empty)return;
+  const batch=FB.db.batch();
+  snap.forEach(d=>batch.delete(d.ref));
+  await batch.commit();
+ }catch(e){/* silencioso: si falla, los mensajes viejos simplemente dejan de mostrarse por el filtro de lectura */}
+}
+initFirebase();
+
+/* ================= DECORADOR DE NOMBRES NPC ================= */
+function decorateName(name) {
+  if (!name) return name;
+  const isBot = BOTS.some(b => b.name === name);
+  if (isBot) {
+    return `${name} <span style="color:red">(NPC)</span>`;
+  }
+  return name;
+}
+
+/* ================= CHAT: envío + sistema de NPCs con IA =================
+   OFFLINE (S.mode!=='online' o sin Firebase conectado):
+     Los NPCs charlan Y ejecutan operaciones reales del juego (compran lotes
+     de tu lonja, pujan en subastas de terrenos...), tanto al responderte
+     como por su cuenta cada cierto tiempo.
+   ONLINE (S.mode==='online' con Firebase conectado):
+     El chat es para los jugadores reales. Los NPCs no actúan ni cotillean:
+     solo intervienen como ayuda/guía cuando alguien hace una pregunta sobre
+     el juego, y no ejecutan ninguna operación económica.
+   ======================================================================== */
+function postChatMessage(name,emoji,msg,isBot=false){
+ if(FB.db){
+  FB.db.collection('rooms').doc(ROOM).collection('chat').add({
+   name,emoji,msg,ts:firebase.firestore.FieldValue.serverTimestamp()
+  }).catch(()=>{});
+ }else{
+  CHAT.push({name,emoji,msg,ts:Date.now()});if(CHAT.length>40)CHAT.shift();saveChatLog();renderChatbox();
+ }
+}
+const norm=s=>(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+function esPreguntaDeAyuda(msg){
+ const m=norm(msg);
+ return /\?|como|que es|donde|cuando|cuanto|ayuda|duda|no se|no entiendo|explica|para que sirve/.test(m);
+}
+const GAME_HELP_SUMMARY=`Resumen del juego "SuperGanga Tycoon": el jugador gestiona un supermercado en un barrio de Valencia. Compra stock en el Mercado y lo vende con margen a los vecinos para ganar dinero (caja). En la Plaza del Ayuntamiento puede: aceptar pedidos de vecinos (sección "Pedidos"), comprar o publicar lotes de mercancía a otros tenderos (sección "Ofertas" y "Lonja"), pujar por terrenos en las subastas ("Subastas de Terrenos", usando la cartera/wallet, que es el ahorro personal distinto de la caja del negocio), firmar contratos de suministro a plazo, y formar pactos de precios (carteles) fijos por distrito. Subir de nivel desbloquea más categorías de producto y mejoras.`;
+const HELP_FALLBACK_REPLIES=[
+ 'Mira la sección "Pedidos" de la Plaza: acepta lo que pidan los vecinos y te pagan al momento.',
+ 'En la Lonja puedes comprar y vender lotes de mercancía directamente con otros tenderos.',
+ 'Las subastas de terrenos usan tu cartera (wallet), no la caja del negocio. ¡Ojo a no confundirlas!',
+ 'Si formas un pacto de precios (cartel) en un distrito, los precios quedan fijos y no se pueden tocar.',
+ 'Sube de nivel vendiendo en tu súper para desbloquear más categorías de producto.'
+];
+async function npcGuideReply(bot,playerMsg){
+ const key=obtenerApiKey();
+ if(!pareceApiKeyValida(key))return rnd(HELP_FALLBACK_REPLIES);
+ try{
+  const prompt=`Eres ${bot.name}, un vecino veterano que ayuda a los jugadores nuevos en el chat de un videojuego de gestión de un supermercado. ${GAME_HELP_SUMMARY} Un jugador ha escrito esto en el chat: "${playerMsg}". Respóndele en español de forma breve, clara y útil (máximo 30 palabras, una o dos frases cortas, sin markdown ni comillas), explicándole cómo hacerlo dentro del juego. Si el mensaje no es realmente una pregunta sobre el juego, responde solo "NADA".`;
+  const{texto}=await solicitarTextoGemini(key,prompt,{maxOutputTokens:110});
+  const limpio=texto?texto.replace(/^["“]|["”]$/g,'').trim():'';
+  if(!limpio||/^nada\.?$/i.test(limpio))return null;
+  return limpio;
+ }catch(e){return rnd(HELP_FALLBACK_REPLIES);}
+}
+async function npcCpuReply(bot,playerMsg){
+ const key=obtenerApiKey();
+ if(!pareceApiKeyValida(key))return{reply:null,action:'ninguna'};
+ try{
+  const prompt=`Eres ${bot.name}, un vecino del barrio de Valencia en un videojuego de gestión de un supermercado llamado "${S.name}", regentado por ${S.pname}. Responde EXCLUSIVAMENTE con dos líneas, sin nada más ni comillas:
+RESPUESTA: <una frase breve, natural y coloquial en español, máximo 25 palabras>
+ACCION: <una de estas palabras exactas: ninguna, comprar_lote, pujar_terreno>
+Elige "comprar_lote" solo si tiene sentido comprarle algo a ${S.pname} en la lonja del barrio ahora mismo. Elige "pujar_terreno" solo si parece buen momento para pujar por un terreno en la subasta municipal. Si ninguna encaja, pon "ninguna". Mensaje de ${S.pname} en el chat: "${playerMsg}"`;
+  const{texto}=await solicitarTextoGemini(key,prompt,{maxOutputTokens:100});
+  const rMatch=/RESPUESTA:\s*(.+)/i.exec(texto);
+  const aMatch=/ACCION:\s*(\w+)/i.exec(texto);
+  const reply=rMatch?rMatch[1].replace(/^["“]|["”]$/g,'').trim():null;
+  const action=aMatch?aMatch[1].toLowerCase():'ninguna';
+  return{reply,action};
+ }catch(e){return{reply:null,action:'ninguna'};}
+}
+// Ejecuta una acción REAL del juego en nombre de un NPC (solo en modo offline).
+// Devuelve true si la acción se ha podido realizar.
+function executeNpcAction(bot,action){
+ if(action==='comprar_lote'){
+  const lotes=S.offers.filter(o=>o.type==='lonja');
+  if(!lotes.length)return false;
+  const o=rnd(lotes);
+  const p=byId[o.pid];if(!p)return false;
+  S.cash+=o.price;
+  logEconomy('Lonja',`${bot.name} te compró ${o.qty}× ${p.name} en la lonja`,o.price,bot.name);
+  if(FB.db&&o.fbId)FB.db.collection('rooms').doc(ROOM).collection('offers').doc(o.fbId).delete().catch(()=>{});
+  else S.offers=S.offers.filter(x=>x!==o);
+  toast(`🤝 ${bot.emoji} ${bot.name} te ha comprado ${o.qty}× ${p.name} por ${fmt$(o.price)}`);
+  save();updateHUD();renderPlaza();
+  return true;
+ }
+ if(action==='pujar_terreno'){
+  // Ahora los terrenos se compran directamente, no por subasta. Pero mantenemos compatibilidad.
+  const disponibles=NODOS_LIBRES.filter(n=>!S.ownedNodes[n.id]);
+  if(!disponibles.length)return false;
+  const n=rnd(disponibles);
+  if(S.wallet<n.price)return false;
+  S.wallet-=n.price;
+  S.ownedNodes[n.id]=true;
+  toast(`🏛️ ${bot.emoji} ${bot.name} ha comprado ${n.name} por ${fmt$(n.price)}`);
+  save();updateHUD();renderPlaza();
+  return true;
+ }
+ return false;
+}
+function sendChatMessage(){
+ const input=$('chatIn');const msg=(input.value||'').trim();if(!msg)return;
+ input.value='';
+ postChatMessage(S.pname,'⭐',msg);
+ const online=S.mode==='online'&&!!FB.db;
+ if(online){
+  // Modo online: los NPCs solo ayudan si detectan una pregunta sobre el juego.
+  if(esPreguntaDeAyuda(msg)){
+   setTimeout(async()=>{
+    const bot=rnd(BOTS);
+    const reply=await npcGuideReply(bot,msg);
+    if(reply)postChatMessage(bot.name,bot.emoji,reply,true);
+   },400+Math.random()*500);
+  }
+  return;
+ }
+ // Modo offline: un vecino responde y, si procede, ejecuta una acción real.
+ setTimeout(async()=>{
+  const bot=rnd(BOTS);
+  const{reply,action}=await npcCpuReply(bot,msg);
+  postChatMessage(bot.name,bot.emoji,reply||rnd(REPLIES),true);
+  if(action&&action!=='ninguna')executeNpcAction(bot,action);
+ },350+Math.random()*450);
+}
+// Además de responder al jugador, en modo offline los NPCs también actúan
+// por su cuenta de vez en cuando, sin que nadie les escriba.
+function npcAutonomousTick(){
+ if(S.mode==='online'&&FB.db)return;
+ const bot=rnd(BOTS);
+ const r=Math.random();
+ if(r<.3){
+  postChatMessage(bot.name,bot.emoji,rnd(REPLIES),true);
+ }else if(r<.5){
+  // Publicar oferta en lonja (más frecuente)
+  const p=rnd(PRODUCTS.filter(p=>p.unlock<=S.level));
+  if(p){
+   const qty=ri(5,20);
+   const price=r2(qty*p.cost*(0.6+Math.random()*0.4));
+   const oferta={type:'lonja',name:bot.name,emoji:'🏪',pid:p.id,qty,price};
+   if(FB.db){
+    FB.db.collection('rooms').doc(ROOM).collection('offers').add(Object.assign(
+     {ts:firebase.firestore.FieldValue.serverTimestamp(),uid:FB.uid},oferta)).catch(()=>{});
+   }else{
+    S.offers.push(Object.assign({id:'lonja'+Date.now()+Math.random().toString(36).substr(2,4)},oferta));
+   }
+   postChatMessage(bot.name,bot.emoji,`📢 Pongo en la lonja ${qty}× ${p.name} a ${fmt$(price)}`,true);
+  }
+ }else if(r<.7){
+  // Ofrecer contrato de suministro (más frecuente)
+  const cat=rnd(Object.keys(CATNAME));
+  const lv=(S.contracts[cat]||0)+1;
+  if(lv<=3){
+   const precio=Math.round(80000*Math.pow(1.8,lv-1));
+   const oferta={from:bot.name,to:S.pname,pid:null,cat:cat,qty:ri(10,30),pricePerUnit:precio/100,totalPrice:precio,daysLeft:ri(3,7),active:true};
+   if(FB.db){
+    FB.db.collection('rooms').doc(ROOM).collection('contracts').add(Object.assign(
+     {ts:firebase.firestore.FieldValue.serverTimestamp(),uid:FB.uid},oferta)).catch(()=>{});
+   }else{
+    S.supplyContracts.push(Object.assign({id:'sc'+Date.now()+Math.random().toString(36).substr(2,4)},oferta));
+   }
+   postChatMessage(bot.name,bot.emoji,`📄 Ofrezco contrato de ${CATNAME[cat]} nivel ${lv} por ${fmt$(precio)}`,true);
+  }
+ }else{
+  if(executeNpcAction(bot,'pujar_terreno'))postChatMessage(bot.name,bot.emoji,'He comprado un terreno para mi negocio 🏛️',true);
+ }
+}
+// Ejecutar el tick autónomo cada 8-12 segundos para que haya más actividad
+setInterval(npcAutonomousTick,10000+Math.random()*4000);
+
+/* ================= HUD ================= */
+function updateHUD(){
+ S=loadState()||S;
+ S.auctions=S.auctions||[];S.supplyContracts=S.supplyContracts||[];S.priceCartels=S.priceCartels||[];
+ enforceFixedPrices();
+ $('tbWallet').textContent=fmt$(S.wallet);$('tbWallet').style.color=S.wallet<0?'#ff8a7a':'';
+ $('tbCash').textContent=fmt$(S.cash);
+ $('tbEnergy').firstElementChild.style.width=(S.energy||0)+'%';
+ $('tbMood').textContent=(S.mood||70)>=80?'😄':(S.mood||70)>=55?'😊':(S.mood||70)>=30?'😐':(S.mood||70)>=15?'😟':'😭';
+ $('tbDay').textContent=S.day||1;
+ const h=Math.floor((S.clockMin||0)/60),m=(S.clockMin||0)%60;
+ $('tbClock').textContent=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+ $('tbMode').textContent=FB.db?'🌐 Online':(S.mode==='online'?'🌐 Online':'🤖 Offline');
+ $('plazaBalances').textContent=`${fmt$(S.cash)} · ${fmt$(S.wallet)}`;
+}
+
+/* ================= PLAZA: PEDIDOS / OFERTAS / CHAT / SUBASTAS / LONJA / CONTRATOS / CARTELES ================= */
+/* ================= PLAZA: formularios fijos + listas dinámicas =================
+   BUG ANTERIOR: renderPlaza() reconstruía TODO el HTML (incluidos los campos
+   de texto/número de Ofertas, Lonja, Contratos y Pactos de Precios) cada vez
+   que se llamaba — y se llama cada 5s y tras cada acción. Eso destruía y
+   recreaba los <input> constantemente, así que al escribir un precio "saltaba"
+   y perdías el foco y lo escrito. Ahora los formularios son fijos en el HTML
+   (se enganchan UNA sola vez con initPlazaFormsUI) y solo las listas de
+   resultados (pedidos, ofertas, lonja, contratos, carteles) se refrescan. */
+function renderPlaza(){
+ S.orders=S.orders||[];S.offers=S.offers||[];S.stock=S.stock||{};
+ renderOrdersList();
+ renderOffersList();
+ $('landSalesList').innerHTML=renderLandSales();
+ document.querySelectorAll('[data-buy-land]').forEach(b=>b.onclick=()=>buyLand(b.dataset.buyLand));
+ $('lonjaList').innerHTML=renderLonja();
+ document.querySelectorAll('[data-buy-lonja]').forEach(b=>b.onclick=()=>buyLonja(b.dataset.buyLonja));
+ renderContractsList();
+ renderCartelsList();
+ refreshProductSelects();
+}
+function renderOrdersList(){
+ const orders=S.orders.map(o=>{
+  const p=byId[o.pid];if(!p)return'';
+  const have=S.stock[o.pid]||0;
+  return `<div class="orow"><span>${o.emoji||'🙂'} <b>${decorateName(o.name)}</b> pide <b>${o.qty}× ${p.emoji} ${p.name}</b> · paga ${fmt$(p.fair*o.qty*(o.premium||1))}</span>
+   <button class="btn grn" data-prep="${o.fbId||o.id}" ${have>=o.qty?'':'disabled'}>${have>=o.qty?'📦 Preparar':'faltan uds'}</button></div>`;
+ }).join('');
+ $('ordersList').innerHTML=orders||'<p style="font-size:.9rem;color:#8a7f68">Nadie ha pedido nada todavía.</p>';
+ $('ordersCount').textContent=S.orders.length;
+ document.querySelectorAll('[data-prep]').forEach(b=>b.onclick=()=>prepOrder(b.dataset.prep));
+}
+function renderOffersList(){
+ const list=S.offers.filter(o=>o.type!=='lonja');
+ const offers=list.map(o=>{
+  const p=byId[o.pid];if(!p)return'';
+  return `<div class="orow"><span>${o.emoji||'🤝'} <b>${decorateName(o.name)}</b> vende <b>${o.qty}× ${p.emoji} ${p.name}</b></span>
+   <button class="btn" data-buyoffer="${o.fbId||o.id}" ${S.cash>=o.price?'':'disabled'}>${fmt$(o.price)} (caja)</button></div>`;
+ }).join('');
+ $('offersList').innerHTML=offers||'<p style="font-size:.9rem;color:#8a7f68">Sin ofertas ahora mismo.</p>';
+ $('offersCount').textContent=list.length;
+ document.querySelectorAll('[data-buyoffer]').forEach(b=>b.onclick=()=>buyOffer(b.dataset.buyoffer));
+}
+function renderContractsList(){
+ $('contractsListInner').innerHTML=renderSupplyContracts();
+ $('contractsCount').textContent=S.supplyContracts.filter(c=>c.active).length;
+}
+// Muestra u oculta los formularios de publicar/crear según si hay stock propio,
+// y refresca las opciones de producto sin perder lo que el jugador esté
+// escribiendo en los otros campos (cantidad, precio, etc.).
+function refreshProductSelects(){
+ const myStock=Object.keys(S.stock).filter(k=>S.stock[k]>0);
+ const optionsHtml=myStock.map(k=>`<option value="${k}">${byId[k].emoji} ${byId[k].name} (${S.stock[k]})</option>`).join('');
+ for(const selId of ['ofProd','lonjaProd','contProd']){
+   const sel=$(selId);if(!sel)continue;
+   const prevVal=sel.value;
+   sel.innerHTML=optionsHtml;
+   if(myStock.includes(prevVal))sel.value=prevVal;
+ }
+ const show=myStock.length>0;
+ $('publishOfferForm').style.display=show?'flex':'none';
+ $('offerFormHint').style.display=show?'none':'block';
+ $('publishLonjaForm').style.display=show?'flex':'none';
+ $('createContractForm').style.display=show?'flex':'none';
+}
+// Formularios y botones que NO deben volver a engancharse en cada renderPlaza():
+// se hace una única vez al arrancar la página.
+function initPlazaFormsUI(){
+ $('cartelCategory').innerHTML=Object.keys(CARTEL_CATEGORY_GROUPS).map(k=>`<option value="${k}">${k}</option>`).join('');
+ $('cartelDistrict').innerHTML=DISTRICTS.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+ $('pubOfferBtn').onclick=publishOffer;
+ $('pubLonjaBtn').onclick=publishLonja;
+ $('createContractBtn').onclick=createContractHandler;
+ $('createCartelBtn').onclick=createCartelHandler;
+}
+
+function renderChatbox(){
+ const cb=$('chatbox');if(!cb)return;
+ cb.innerHTML=CHAT.length?CHAT.map(m=>`<div>${m.emoji} <b>${decorateName(m.name)}</b>: ${m.msg}</div>`).join(''):'<div class="empty-log">Sin mensajes todavía. ¡Saluda al barrio!</div>';
+ cb.scrollTop=cb.scrollHeight;
+}
+// El chat vive fuera de renderPlaza() a propósito: renderPlaza() se llama cada
+// pocos segundos (sondeo local + listeners de Firestore), y si el <input> se
+// reconstruyera en cada pasada perderías el foco y lo que estabas escribiendo.
+// Por eso los botones y el campo de texto se enganchan UNA sola vez aquí.
+function initChatUI(){
+ $('sendChatBtn').onclick=sendChatMessage;
+ $('clearChatBtn').onclick=clearChat;
+ $('chatIn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendChatMessage();}});
+ updateChatModeNote();
+ renderChatbox();
+}
+function updateChatModeNote(){
+ const note=$('chatModeNote');if(!note)return;
+ const online=S.mode==='online'&&FB.db;
+ note.textContent=online
+  ?'🌐 Chat en vivo con otros jugadores. Los vecinos NPC solo intervienen para ayudarte si haces una pregunta sobre el juego.'
+  :'🤖 Modo offline: los vecinos NPC charlan contigo y también compran, venden y pujan por su cuenta.';
+}
+
+function prepOrder(id){
+ const o=S.orders.find(x=>(x.fbId||x.id)===id);if(!o)return;
+ const p=byId[o.pid];
+ if((S.stock[o.pid]||0)<o.qty){toast('📦 No tienes stock suficiente.');return;}
+ S.stock[o.pid]-=o.qty;if(S.stock[o.pid]<=0)delete S.stock[o.pid];
+ const pay=r2(p.fair*o.qty*(o.premium||1));
+ S.cash+=pay;
+ logEconomy('Venta',`Venta de ${o.qty} unidades de ${p.name}`,pay,o.name||'Vecino');
+ toast(`📦 Pedido entregado: +${fmt$(pay)}`);
+ if(FB.db&&o.fbId)FB.db.collection('rooms').doc(ROOM).collection('orders').doc(o.fbId).delete().catch(()=>{});
+ else{S.orders=S.orders.filter(x=>x!==o);}
+ save();updateHUD();renderPlaza();
+}
+
+function buyOffer(id){
+ const o=S.offers.find(x=>(x.fbId||x.id)===id&&x.type!=='lonja');if(!o)return;
+ const p=byId[o.pid];
+ if(S.cash<o.price){toast('🏪 La caja no llega.');return;}
+ if(o.qty>cap()-totalStock()){toast('📦 Almacén lleno.');return;}
+ S.cash-=o.price;
+ S.stock[o.pid]=(S.stock[o.pid]||0)+o.qty;
+ logEconomy('Broker',`Compra de lote: ${o.qty} unidades de ${p.name}`,o.price,o.name||'Tendero');
+ toast(`🤝 Lote comprado: ${o.qty}× ${p.emoji} ${p.name}`);
+ if(FB.db&&o.fbId){
+  FB.db.collection('rooms').doc(ROOM).collection('offers').doc(o.fbId).delete().catch(()=>{});
+  if(o.uid)FB.db.collection('rooms').doc(ROOM).collection('players').doc(o.uid)
+   .update({money:firebase.firestore.FieldValue.increment(o.price)}).catch(()=>{});
+ }else{S.offers=S.offers.filter(x=>x!==o);}
+ save();updateHUD();renderPlaza();
+}
+
+function publishOffer(){
+ const sel=$('ofProd');if(!sel||!sel.value){toast('No tienes stock que vender.');return;}
+ const pid=+sel.value;
+ const qty=Math.min(+$('ofQty').value||10,S.stock[pid]||0);
+ const price=+$('ofPrice').value||10;
+ if(qty<1||price<1)return;
+ S.stock[pid]-=qty;if(S.stock[pid]<=0)delete S.stock[pid];
+ const payload={name:S.pname,pid,qty,price,emoji:'🤝'};
+ if(FB.db){
+  FB.db.collection('rooms').doc(ROOM).collection('offers').add(Object.assign(
+   {ts:firebase.firestore.FieldValue.serverTimestamp(),uid:FB.uid},payload)).catch(()=>{});
+ }else{
+  S.offers.push(Object.assign({id:'local'+Date.now()},payload));
+ }
+ toast('📢 Lote publicado en la plaza.');
+ save();updateHUD();renderPlaza();
+}
+
+/* ============ COMPRA DIRECTA DE TERRENOS (siempre disponible) ============ */
+function renderLandSales(){
+ const disponibles=NODOS_LIBRES.filter(n=>!S.ownedNodes[n.id]);
+ if(!disponibles.length) return '<p style="font-size:.86rem;color:#8a7f68">Ya tienes todos los terrenos disponibles.</p>';
+
+ // Rotación: mostramos solo 3 terrenos, cambiando cada 5 minutos (300000 ms)
+ const INTERVALO_ROTACION = 5 * 60 * 1000;
+ let tiempoActual = Date.now();
+
+ // Si hace más de 5 minutos desde la última rotación, o no hay terrenos mostrados, elegir nuevos
+ if (tiempoActual - (S.landDisplayLastUpdate || 0) > INTERVALO_ROTACION || S.currentLandDisplay.length !== 3) {
+   // Mezclamos aleatoriamente y cogemos 3 (o menos si no hay 3 disponibles)
+   const mezclados = [...disponibles].sort(() => Math.random() - 0.5);
+   S.currentLandDisplay = mezclados.slice(0, 3).map(n => n.id);
+   S.landDisplayLastUpdate = tiempoActual;
+   save();
+ }
+
+ // Obtenemos los nodos correspondientes a los IDs guardados
+ const nodosVisibles = S.currentLandDisplay
+   .map(id => disponibles.find(n => n.id === id))
+   .filter(Boolean); // Si alguno fue comprado o ya no está, lo filtramos
+
+ // Mostramos la cuadrícula con los 3 terrenos
+ return `<div class="land-grid">${nodosVisibles.map(n=>`
+  <div class="land-card">
+   <h3>${NODE_ICONS[n.type]||'🏗️'} ${n.name}</h3>
+   <div class="land-meta">Tipo: ${translateType(n.type)}</div>
+   <div class="land-meta">Precio: ${fmt$(n.price)}</div>
+   <div class="land-desc">Terreno ${translateType(n.type)} disponible para comprar.</div>
+   <button class="btn" data-buy-land="${n.id}" ${S.wallet>=n.price?'':'disabled'}>${S.wallet>=n.price?'Comprar':'💼 Insuficiente'}</button>
+  </div>
+ `).join('')}</div>`;
+}
+function buyLand(nodeId){
+ const node=NODOS_LIBRES.find(n=>n.id===nodeId);
+ if(!node||S.ownedNodes[node.id]){toast('Ese terreno ya no está disponible.');return;}
+ if(S.wallet<node.price){toast('💼 No tienes suficiente cartera.');return;}
+ S.wallet-=node.price;
+ S.ownedNodes[node.id]=true;
+ logEconomy('Terreno',`Compra de terreno ${node.name}`,node.price,'Tú');
+ toast(`🏛️ Has comprado ${node.name} por ${fmt$(node.price)}`);
+ // Forzamos rotación para que el terreno comprado desaparezca y entre otro si es posible
+ S.landDisplayLastUpdate = 0;
+ save();updateHUD();renderPlaza();
+}
+
+/* ============ LONJA (lotes locales, igual que en mi_ciudad.html) ============ */
+function renderLonja(){
+ const offers=S.offers.filter(o=>o.type==='lonja');
+ if(!offers.length)return '<p style="font-size:.85rem;color:#8a7f68">No hay lotes publicados en la lonja.</p>';
+ return offers.map(o=>{
+  const p=byId[o.pid];if(!p)return'';
+  return `<div class="orow"><span>${o.emoji||'🏪'} <b>${decorateName(o.name)}</b> vende ${o.qty}× ${p.emoji} ${p.name} · ${fmt$(o.price)}</span>
+  <button class="btn grn" data-buy-lonja="${o.fbId||o.id}" ${S.cash>=o.price?'':'disabled'}>Comprar lote</button></div>`;
+ }).join('');
+}
+function publishLonja(){
+ const sel=$('lonjaProd');if(!sel||!sel.value)return;
+ const pid=+sel.value;
+ const qty=Math.min(+$('lonjaQty').value||10,S.stock[pid]||0);
+ const price=+$('lonjaPrice').value||10;
+ if(qty<1||price<1)return;
+ S.stock[pid]-=qty;if(S.stock[pid]<=0)delete S.stock[pid];
+ const payload={type:'lonja',name:S.pname,emoji:'🏪',pid,qty,price};
+ if(FB.db){
+  FB.db.collection('rooms').doc(ROOM).collection('offers').add(Object.assign(
+   {ts:firebase.firestore.FieldValue.serverTimestamp(),uid:FB.uid},payload)).catch(()=>{});
+ }else{
+  S.offers.push(Object.assign({id:'lonja'+Date.now()+Math.random().toString(36).substr(2,4)},payload));
+ }
+ toast('📢 Lote publicado en la Lonja.');
+ save();updateHUD();renderPlaza();
+}
+function buyLonja(id){
+ const o=S.offers.find(x=>(x.fbId||x.id)===id&&x.type==='lonja');if(!o)return;
+ const p=byId[o.pid];
+ if(S.cash<o.price){toast('🏪 La caja no llega.');return;}
+ if(o.qty>cap()-totalStock()){toast('📦 Almacén lleno.');return;}
+ S.cash-=o.price;S.stock[o.pid]=(S.stock[o.pid]||0)+o.qty;
+ logEconomy('Broker',`Compra en lonja: ${o.qty} unidades de ${p.name}`,o.price,o.name||'Lonja');
+ toast(`🤝 Lote comprado en lonja: ${o.qty}× ${p.name}`);
+ if(FB.db&&o.fbId)FB.db.collection('rooms').doc(ROOM).collection('offers').doc(o.fbId).delete().catch(()=>{});
+ else S.offers=S.offers.filter(x=>x!==o);
+ save();updateHUD();renderPlaza();
+}
+
+/* ============ CONTRATOS DE SUMINISTRO ============ */
+function renderSupplyContracts(){
+ const active=S.supplyContracts.filter(c=>c.active);
+ if(!active.length)return '<p style="font-size:.85rem;color:#8a7f68">No hay contratos activos.</p>';
+ return active.map(c=>{
+  const p= c.pid ? byId[c.pid] : null;
+  const nombre = p ? `${p.emoji} ${p.name}` : (c.cat ? `${CATNAME[c.cat]}` : 'Suministro');
+  return `<div class="orow"><span>${nombre} · ${decorateName(c.from)} → ${decorateName(c.to)} · ${c.qty} uds · ${fmt$(c.pricePerUnit)}/ud · restan ${c.daysLeft} días</span></div>`;
+ }).join('');
+}
+function createContractHandler(){
+ const sel=$('contProd');if(!sel||!sel.value)return;
+ const pid=+sel.value,qty=+$('contQty').value||1,price=+$('contPrice').value||1,days=+$('contDays').value||5;
+ const payload={from:S.pname,to:'CPU',pid,qty,pricePerUnit:price,totalPrice:qty*price,daysLeft:days,active:true};
+ if(FB.db){
+  FB.db.collection('rooms').doc(ROOM).collection('contracts').add(Object.assign(
+   {ts:firebase.firestore.FieldValue.serverTimestamp(),uid:FB.uid},payload)).catch(()=>{});
+ }else{
+  S.supplyContracts.push(Object.assign({id:'sc'+Date.now()+Math.random().toString(36).substr(2,4)},payload));
+ }
+ logEconomy('Contrato',`Contrato de suministro: ${qty}× ${byId[pid].name} a ${fmt$(price)}/ud durante ${days} días.`,0,'Lonja');
+ toast('📄 Contrato creado.');
+ save();updateHUD();renderPlaza();
+}
+
+/* ============ PACTOS DE PRECIOS ============
+   Cada pacto fija el precio de un GRUPO de categorías de producto (pensado
+   para que se entienda como "a qué tipo de productos se fija el precio":
+   Alimentación fresca, Panadería y dulces, Bebidas y snacks, etc.) en un
+   distrito, con un eslogan y unas existencias de referencia. Dura 24 horas
+   REALES desde que se firma (no días de juego) y se borra solo al expirar.
+   Máximo 5 carteles activos por jugador. */
+const CARTEL_CATEGORY_GROUPS={
+ 'Alimentación fresca':['F','V','L','C','X'],
+ 'Panadería y Dulces':['P','D'],
+ 'Bebidas y Snacks':['B','S'],
+ 'Despensa y Congelados':['N','Z','M'],
+ 'Hogar y Limpieza':['H'],
+ 'Cuidado Personal':['A'],
+ 'Mascotas':['T'],
+ 'Bebés':['Y'],
+ 'Gourmet':['G']
+};
+const CARTEL_DURATION_MS=24*60*60*1000; // 24 horas reales
+function createCartelHandler(){
+ const district=$('cartelDistrict').value;
+ const categoryLabel=$('cartelCategory').value;
+ const minPrice=parseFloat($('cartelMinPrice').value);
+ const stock=parseInt($('cartelStock').value,10);
+ const slogan=($('cartelSlogan').value||'').trim().slice(0,60);
+ if(!district||!categoryLabel||isNaN(minPrice)||minPrice<=0){toast('Elige distrito, tipo de producto y un precio válido.');return;}
+ if(isNaN(stock)||stock<1){toast('Indica las existencias del pacto (uds.)');return;}
+ const misCarteles=S.priceCartels.filter(c=>c.active&&c.members.includes(S.pname));
+ if(misCarteles.length>=5){toast('🚫 Ya tienes 5 carteles activos (máximo permitido).');return;}
+ const cats=CARTEL_CATEGORY_GROUPS[categoryLabel];
+ if(!cats){toast('Tipo de producto no válido.');return;}
+ const minPrices={};for(const cat of cats)minPrices[cat]=minPrice;
+ const now=Date.now();
+ const payload={district,category:categoryLabel,members:[S.pname],minPrices,stock,slogan,
+  startDay:S.day,startedAt:now,expiresAt:now+CARTEL_DURATION_MS,active:true,fixed:true};
+ if(FB.db){
+  FB.db.collection('rooms').doc(ROOM).collection('cartels').add(Object.assign(
+   {ts:firebase.firestore.FieldValue.serverTimestamp(),uid:FB.uid},payload)).catch(()=>{});
+ }else{
+  S.priceCartels.push(Object.assign({id:'pc'+Date.now()+Math.random().toString(36).substr(2,4)},payload));
+ }
+ const msg=`🤝 Pacto de precios firmado en ${DISTRICT_NAMES[district]} para ${categoryLabel}. ¡Precio fijo durante 24 horas!`;
+ toast(msg);
+ if(FB.db){
+  FB.db.collection('rooms').doc(ROOM).collection('chat').add({
+   name:'SISTEMA',emoji:'📢',msg,ts:firebase.firestore.FieldValue.serverTimestamp()
+  }).catch(()=>{});
+ }
+ $('cartelMinPrice').value='';$('cartelStock').value='';$('cartelSlogan').value='';
+ save();updateHUD();renderPlaza();
+}
+function formatCartelTimeLeft(ms){
+ if(ms<=0)return 'expirado';
+ const totalMin=Math.floor(ms/60000);
+ const h=Math.floor(totalMin/60),m=totalMin%60;
+ return h>0?`${h}h ${m}m`:`${m}m`;
+}
+function renderCartelsList(){
+ // Los carteles caducan a las 24h reales, aunque nadie entre a la plaza mientras tanto:
+ // al renderizar comprobamos la fecha y desactivamos los que ya expiraron.
+ const now=Date.now();
+ let changed=false;
+ for(const c of S.priceCartels){
+  if(c.active&&c.expiresAt&&now>=c.expiresAt){
+   c.active=false;changed=true;
+   if(c.members.includes(S.pname)){
+    toast(`⌛ El pacto de precios en ${DISTRICT_NAMES[c.district]||c.district} ha expirado tras 24 horas.`);
+   }
+  }
+ }
+ if(changed)save();
+ const activos=S.priceCartels.filter(c=>c.active);
+ $('cartelsCount').textContent=activos.filter(c=>c.members.includes(S.pname)).length;
+ $('cartelsListInner').innerHTML=activos.length?activos.map(c=>`
+  <div class="orow" style="flex-direction:column;align-items:flex-start;gap:2px">
+   <span>🤝 Cartel en <b>${DISTRICT_NAMES[c.district]||c.district}</b> · ${c.category||'Productos varios'} · ${fmt$(Object.values(c.minPrices)[0]||0)}/ud</span>
+   <span style="font-size:.78rem;color:#6b6250">📦 ${c.stock||0} uds. en el pacto${c.slogan?` · "${c.slogan}"`:''} · ⏳ ${formatCartelTimeLeft((c.expiresAt||0)-now)} restantes</span>
+  </div>`).join(''):'<p style="font-size:.85rem;color:#8a7f68">No hay carteles activos ahora mismo.</p>';
+}
+/* ============ PACTOS DE PRECIOS: ENFORCEMENT (CORREGIDO) ============ */
+function enforceFixedPrices(){
+ S.priceCartelBaseline=S.priceCartelBaseline||{};
+ let changed=false;
+ for(const c of S.priceCartels){
+  if(!c.active)continue;
+  if(c.expiresAt&&Date.now()>=c.expiresAt)continue; // ya expirado, renderCartelsList lo desactivará
+  for(const member of c.members){
+   if(member!==S.pname)continue;
+   for(const cat in c.minPrices){
+    const fixedPrice=c.minPrices[cat];
+    const products=PRODUCTS.filter(p=>p.cat===cat);
+    for(const p of products){
+     const current=S.prices[p.id]??p.fair;
+     if(Math.abs(current-fixedPrice)>0.01){
+      const eraManipulacionReal=S.priceCartelBaseline[p.id]!==undefined;
+      S.prices[p.id]=fixedPrice;
+      S.priceCartelBaseline[p.id]=fixedPrice;
+      changed=true;
+      if(eraManipulacionReal){
+       if(FB.db){
+        FB.db.collection('rooms').doc(ROOM).collection('chat').add({
+         name:'SISTEMA',emoji:'⚠️',
+         msg:`${member} intentó modificar el precio de ${p.name}. Se ha restaurado al precio fijo acordado.`,
+         ts:firebase.firestore.FieldValue.serverTimestamp()
+        }).catch(()=>{});
+       }
+      }
+     }else{
+      S.priceCartelBaseline[p.id]=fixedPrice;
+     }
+    }
+   }
+  }
+ }
+ if(changed)save();
+}
+
+/* ================= SINCRONIZACIÓN CON LA PARTIDA ================= */
+setInterval(()=>{updateHUD();if(!FB.db){CHAT=loadChatLog();renderChatbox();}renderPlaza();updateChatModeNote();},5000);
+initChatUI();
+initPlazaFormsUI();
+updateHUD();renderPlaza();
+</script>
+</body>
+</html>

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SuperGanga Tycoon — Terrenos y Edificios</title>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow+Semi+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f2f22;--paper:#fdf7ea;--paper2:#f2e7cd;--ink:#26221c;--red:#d93a2b;--red2:#a92417;
+--yellow:#ffcf3f;--green:#3ecf6f;--line:#e2d4b2;--shadow:#1e1a17}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Barlow Semi Condensed',sans-serif;color:var(--ink);background:
+ radial-gradient(1200px 500px at 50% -10%,#1b4a35 0%,transparent 60%),
+ repeating-linear-gradient(45deg,rgba(255,255,255,.015) 0 2px,transparent 2px 26px),var(--bg);
+ min-height:100vh;overflow-x:hidden}
+.num{font-variant-numeric:tabular-nums}button{font-family:inherit;cursor:pointer;user-select:none}
+.btn{border:2px solid var(--shadow);border-radius:8px;padding:6px 12px;font-weight:700;font-size:.88rem;
+ box-shadow:0 3px 0 var(--shadow);transition:transform .1s;background:var(--yellow)}
+.btn:hover{transform:translateY(-2px)}.btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--shadow)}
+.btn.red{background:var(--red);color:#fff}.btn.ghost{background:#fff}.btn.grn{background:var(--green);color:#fff}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.panelhead{background:var(--paper);border:2px solid var(--shadow);border-radius:12px 12px 0 0;padding:12px 16px 8px}
+.panelhead h2{font-family:'Bungee';font-size:1.15rem;color:var(--red)}
+.panelhead p{font-size:.88rem;color:#6b6250;margin-top:4px;line-height:1.35}
+.panelbody{background:var(--paper);border:2px solid var(--shadow);border-top:1px dashed var(--line);border-radius:0 0 12px 12px;padding:12px}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center}
+#searchM{flex:1;min-width:160px;border:2px solid var(--shadow);border-radius:8px;padding:7px 10px;font:inherit;background:#fff}
+.qchip{border:2px solid var(--shadow);background:#fff;border-radius:8px;padding:5px 10px;font-weight:700;font-size:.83rem;box-shadow:0 3px 0 var(--shadow)}
+.qchip.sel{background:var(--yellow)}
+.emptybox{padding:28px;text-align:center;color:#8a7f68;background:#fff;border:2px dashed var(--line);border-radius:12px}
+.toast{background:var(--shadow);color:#fff;padding:9px 18px;border-radius:10px;border:2px solid var(--yellow);font-weight:600;animation:pop .25s;max-width:92vw;text-align:center}
+#toasts{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:150;display:flex;flex-direction:column;gap:8px;align-items:center}
+@keyframes pop{from{transform:scale(.7);opacity:0}}
+.topbar{position:sticky;top:0;z-index:60;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;
+ padding:8px 12px;background:linear-gradient(#0c281c,#0a2217);border-bottom:3px solid #1d5a41}
+.chip{background:#12382a;border:2px solid #1d5a41;color:#e9f5ec;border-radius:10px;padding:5px 11px;font-size:.92rem;
+ display:flex;align-items:center;gap:6px;box-shadow:0 3px 0 rgba(0,0,0,.3)}
+.chip b{color:#fff}
+.mini{width:64px;height:9px;background:rgba(0,0,0,.45);border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,.25)}
+.mini i{display:block;height:100%;transition:width .4s}
+#tbEnergy i{background:linear-gradient(90deg,#ffb347,var(--yellow))}
+/* ================= TERRENOS ================= */
+.land-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;padding:2px}
+.land-card{background:#f7f2e2;border:2px solid var(--line);border-radius:12px;padding:12px 10px;text-align:center;box-shadow:0 3px 0 rgba(0,0,0,.14);display:flex;flex-direction:column;min-width:0}
+.land-card h3{font-family:'Bungee';font-size:.78rem;color:var(--ink);line-height:1.25;min-height:2.4em;margin-bottom:4px}
+.land-card .land-meta{font-size:.72rem;color:#6b6250;margin:1px 0}
+.land-card .land-produce{font-size:.72rem;color:#5c5443;margin:5px 0;min-height:1.6em}
+.land-card .land-desc{font-size:.7rem;color:#8a7f68;line-height:1.25;margin-bottom:6px;min-height:2.4em}
+.land-card .land-price{font-family:'Bungee';font-size:.86rem;color:#1e9e50;margin:4px 0 8px}
+.land-card .land-owned{font-size:.68rem;font-weight:700;color:#176d36;background:#eaffef;border:1px solid var(--green);border-radius:6px;padding:2px 6px;margin-bottom:6px;display:inline-block}
+.land-card button{width:100%;background:#2e78e0;color:#fff;border-color:#173c2d;box-shadow:0 3px 0 #173c2d}
+.land-card button:disabled{background:#9fb6cf}
+.landcat-bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.landcat-bar .lc-btn{font-size:.72rem;font-weight:700;background:#fff;border:2px solid var(--line);border-radius:8px;padding:4px 9px;cursor:pointer}
+.landcat-bar .lc-btn.active{background:var(--red);color:#fff;border-color:var(--red2)}
+@media(max-width:700px){.land-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="chip">💼 Cartera <b class="num" id="tbWallet">€1.000.000</b></div>
+  <div class="chip">⚡ <div class="mini" id="tbEnergy"><i style="width:100%"></i></div></div>
+  <div class="chip"><span id="tbMood">😊</span> Ánimo</div>
+  <div class="chip">📅 Día <b id="tbDay">1</b></div>
+  <div class="chip">🕗 <b id="tbClock">--:--</b></div>
+  <div class="chip" id="tbMode">🤖 Offline-CPU</div>
+  <button class="btn ghost" onclick="window.location.href='mi_ciudad.html'">🗺️ Volver a Mi ciudad</button>
+</div>
+
+<div style="max-width:1280px;margin:8px auto;padding:0 12px">
+  <div class="panelhead">
+    <h2>🏗️ Terrenos y Edificios</h2>
+    <p>Compra terrenos, edificios, fábricas, granjas, equipamientos y mucho más para hacer crecer tu patrimonio. Elige una categoría y adquiere el terreno que quieras con tu cartera.</p>
+    <div class="controls" id="searchWrap"><input id="searchM" placeholder="🔍 Buscar terreno o edificio…"><div id="qchips"></div></div>
+  </div>
+  <div class="panelbody">
+    <div class="landcat-bar" id="landTypeBar"></div>
+    <div class="land-grid" id="landGrid"></div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+const KEY='superTycoonV2';
+function loadState(){ try{return JSON.parse(localStorage.getItem(KEY));}catch(e){return null;} }
+let S=loadState()||{};
+if(!S||S.started!==true||S.setupComplete!==true){
+ window.location.replace('mi_ciudad.html');
+ throw new Error('No hay partida iniciada. Empieza una partida en mi_ciudad.html.');
+}
+S.stock=S.stock||{};S.prices=S.prices||{};S.mk=S.mk||{};S.mkPrev=S.mkPrev||{};S.up=S.up||{shelf:0,sup:0};
+S.contracts=S.contracts||{};S.properties=S.properties||[];S.landBuildings=S.landBuildings||{};
+S.offers=S.offers||[];S.econLog=S.econLog||[];S.rel=S.rel||{};S.greeted=S.greeted||{};S.dd=S.dd||{buy:0};S.tot=S.tot||{buy:0};
+
+const $=id=>document.getElementById(id);
+const fmtEuroInt=n=>'€'+Math.round(n).toLocaleString('es-ES');
+const norm=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+function toast(m){const t=document.createElement('div');t.className='toast';t.innerHTML=m;$('toasts').appendChild(t);setTimeout(()=>t.remove(),3600);}
+function save(){localStorage.setItem(KEY,JSON.stringify(S));}
+
+function updateHUD(){
+ if(!S || !S.wallet) return;
+ $('tbWallet').textContent='€'+S.wallet.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
+ $('tbEnergy').firstElementChild.style.width=(S.energy||100)+'%';
+ $('tbMood').textContent=(S.mood||70)>=80?'😄':(S.mood||70)>=55?'😊':(S.mood||70)>=30?'😐':(S.mood||70)>=15?'😟':'😭';
+ $('tbDay').textContent=S.day||1;
+ const h=Math.floor((S.clockMin||0)/60),m=(S.clockMin||0)%60;
+ $('tbClock').textContent=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+ $('tbMode').textContent=S.mode==='online'?'🌐 Online-Multijugador':'🤖 Offline-CPU';
+}
+
+function logEconomy(kind,text,amount=0,actor='Sistema'){S.econLog=S.econLog||[];S.econLog.unshift({day:S.day,clock:S.clockMin,kind,text,amount,actor});if(S.econLog.length>80)S.econLog.length=80;save();}
+
+/* ================= TERRENOS Y EDIFICIOS ================= */
+const LAND_ICONS={Land:'🟩',Residential:'🏘️',Farm:'🌾',Factory:'🏭',Commercial:'🏬',Amenity:'🎡',Service:'🏛️',Utility:'⚙️',Transport:'🚉'};
+const TYPE_TRANSLATIONS={Land:'Terreno',Residential:'Residencial',Farm:'Granja',Factory:'Fábrica',Commercial:'Comercial',Amenity:'Equipamiento',Service:'Servicio',Utility:'Utilidad',Transport:'Transporte'};
+const translateType=t=>TYPE_TRANSLATIONS[t]||t;
+
+const LAND_BUILDINGS=[
+ {id:'lb01',name:'Terreno Básico',type:'Land',size:100,produce:'',desc:'Ideal para construcciones iniciales.',price:500},
+ {id:'lb02',name:'Edificio Residencial Pequeño',type:'Residential',size:120,produce:'10 Residentes',desc:'Apto para 10 residentes.',price:1200},
+ {id:'lb03',name:'Granja de Cultivos',type:'Farm',size:200,produce:'80 Alimentos',desc:'Produce alimentos básicos.',price:1800},
+ {id:'lb04',name:'Aserradero',type:'Factory',size:250,produce:'50 Madera',desc:'Produce madera para la construcción.',price:2500},
+ {id:'lb05',name:'Mina de Carbón',type:'Factory',size:300,produce:'40 Carbón',desc:'Fuente de energía esencial.',price:3000},
+ {id:'lb06',name:'Fábrica de Herramientas',type:'Factory',size:280,produce:'20 Herramientas',desc:'Crea herramientas para otras industrias.',price:3500},
+ {id:'lb07',name:'Edificio Comercial',type:'Commercial',size:180,produce:'200 Beneficio',desc:'Genera ingresos pasivos.',price:4000},
+ {id:'lb08',name:'Parque Pequeño',type:'Amenity',size:80,produce:'5 Felicidad',desc:'Mejora la felicidad de los residentes.',price:800},
+ {id:'lb09',name:'Estación de Bomberos',type:'Service',size:100,produce:'10 Seguridad',desc:'Protege tu ciudad de incendios.',price:2000},
+ {id:'lb10',name:'Comisaría de Policía',type:'Service',size:110,produce:'12 Seguridad',desc:'Reduce la criminalidad.',price:2200},
+ {id:'lb11',name:'Hospital Básico',type:'Service',size:220,produce:'15 Salud',desc:'Mejora la salud pública.',price:4500},
+ {id:'lb12',name:'Escuela Primaria',type:'Service',size:180,produce:'8 Educación',desc:'Aumenta la educación de los ciudadanos.',price:3800},
+ {id:'lb13',name:'Planta de Tratamiento de Agua',type:'Utility',size:150,produce:'100 Agua',desc:'Proporciona agua limpia a tu ciudad.',price:3200},
+ {id:'lb14',name:'Planta de Energía Solar',type:'Utility',size:250,produce:'150 Energía',desc:'Genera energía limpia.',price:5000},
+ {id:'lb15',name:'Rascacielos Residencial',type:'Residential',size:300,produce:'100 Residentes',desc:'Apto para 100 residentes.',price:8000},
+ {id:'lb16',name:'Centro Comercial',type:'Commercial',size:280,produce:'500 Beneficio',desc:'Atrae turistas y genera grandes ingresos.',price:6000},
+ {id:'lb17',name:'Puerto Comercial',type:'Transport',size:400,produce:'100 Comercio',desc:'Aumenta el comercio y las importaciones.',price:7500},
+ {id:'lb18',name:'Aeropuerto',type:'Transport',size:500,produce:'150 Turismo',desc:'Conecta tu ciudad con el mundo.',price:10000},
+ {id:'lb19',name:'Universidad',type:'Service',size:350,produce:'20 Investigación',desc:'Investiga nuevas tecnologías.',price:9000},
+ {id:'lb20',name:'Estadio Deportivo',type:'Amenity',size:450,produce:'20 Felicidad',desc:'Atrae eventos y mejora la moral.',price:7000},
+ {id:'lb21',name:'Planta de Reciclaje',type:'Utility',size:200,produce:'30 Reducción Residuos',desc:'Reduce la contaminación y genera recursos.',price:4200},
+ {id:'lb22',name:'Granja Eólica',type:'Utility',size:300,produce:'100 Energía',desc:'Fuente de energía renovable.',price:5500},
+ {id:'lb23',name:'Biblioteca Pública',type:'Service',size:130,produce:'5 Educación',desc:'Fomenta el conocimiento y la cultura.',price:2800},
+ {id:'lb24',name:'Museo de Arte',type:'Amenity',size:250,produce:'50 Turismo',desc:'Atrae visitantes y aumenta el atractivo de la ciudad.',price:6500},
+ {id:'lb25',name:'Laboratorio de Investigación',type:'Factory',size:380,produce:'30 Investigación',desc:'Desarrolla nuevas tecnologías y productos.',price:9500},
+ {id:'lb26',name:'Centro de Congresos',type:'Commercial',size:320,produce:'400 Beneficio',desc:'Atrae eventos de negocios y turismo.',price:7200},
+ {id:'lb27',name:'Parque de Atracciones',type:'Amenity',size:600,produce:'30 Felicidad',desc:'Gran atractivo turístico y felicidad.',price:11000},
+ {id:'lb28',name:'Terreno Urbanizable',type:'Land',size:150,produce:'',desc:'Terreno más grande, ideal para futuras expansiones.',price:800},
+ {id:'lb29',name:'Apartamentos Medianos',type:'Residential',size:180,produce:'30 Residentes',desc:'Apto para 30 residentes.',price:3000},
+ {id:'lb30',name:'Granja Ganadera',type:'Farm',size:250,produce:'50 Alimentos',desc:'Produce carne y alimentos.',price:2500},
+ {id:'lb31',name:'Fábrica de Ladrillos',type:'Factory',size:260,produce:'60 Ladrillos',desc:'Produce ladrillos para la construcción.',price:2800},
+ {id:'lb32',name:'Mina de Hierro',type:'Factory',size:320,produce:'45 Acero',desc:'Produce acero para la industria.',price:3500},
+ {id:'lb33',name:'Tienda de Conveniencia',type:'Commercial',size:100,produce:'100 Beneficio',desc:'Pequeños ingresos por ventas locales.',price:1500},
+ {id:'lb34',name:'Jardín Botánico',type:'Amenity',size:200,produce:'10 Felicidad',desc:'Un lugar hermoso que atrae visitantes.',price:3500},
+ {id:'lb35',name:'Clínica Veterinaria',type:'Service',size:90,produce:'5 Salud',desc:'Cuida de las mascotas de la ciudad.',price:1800},
+ {id:'lb36',name:'Centro de Salud Comunitario',type:'Service',size:150,produce:'10 Salud',desc:'Ofrece servicios médicos básicos a los ciudadanos.',price:2800},
+ {id:'lb37',name:'Instituto de Bachillerato',type:'Service',size:250,produce:'15 Educación',desc:'Educación secundaria para tus ciudadanos.',price:5000},
+ {id:'lb38',name:'Embalse Pequeño',type:'Utility',size:200,produce:'200 Agua',desc:'Aumenta significativamente el suministro de agua.',price:4500},
+ {id:'lb39',name:'Central Hidroeléctrica',type:'Utility',size:400,produce:'300 Energía',desc:'Gran fuente de energía limpia.',price:8000},
+ {id:'lb40',name:'Urbanización de Lujo',type:'Residential',size:400,produce:'50 Residentes',desc:'Casas de lujo para ciudadanos de alto poder adquisitivo.',price:15000},
+ {id:'lb41',name:'Gran Almacén',type:'Commercial',size:250,produce:'300 Beneficio',desc:'Genera ingresos y almacena bienes.',price:5000},
+ {id:'lb42',name:'Estación de Autobuses',type:'Transport',size:120,produce:'15 Transporte',desc:'Mejora el transporte público en la ciudad.',price:2500},
+ {id:'lb43',name:'Estación de Tren',type:'Transport',size:300,produce:'40 Transporte',desc:'Conecta tu ciudad por vía férrea.',price:6000},
+ {id:'lb44',name:'Oficina de Correos',type:'Service',size:70,produce:'5 Servicio',desc:'Proporciona servicios postales básicos.',price:1000},
+ {id:'lb45',name:'Teatro Comunitario',type:'Amenity',size:150,produce:'8 Felicidad',desc:'Ofrece entretenimiento cultural a los residentes.',price:3000},
+ {id:'lb46',name:'Torre de Telecomunicaciones',type:'Utility',size:80,produce:'50 Comunicación',desc:'Mejora la cobertura de internet y móvil.',price:2000},
+ {id:'lb47',name:'Villas con Jardín',type:'Residential',size:200,produce:'15 Residentes',desc:'Residencias cómodas con espacio verde.',price:4000},
+ {id:'lb48',name:'Planta Procesadora de Alimentos',type:'Factory',size:300,produce:'120 Alimentos',desc:'Convierte productos agrícolas en alimentos procesados.',price:4800},
+ {id:'lb49',name:'Mercado Agrícola',type:'Commercial',size:130,produce:'150 Beneficio',desc:'Un mercado para vender productos frescos.',price:2200},
+ {id:'lb50',name:'Centro Cívico',type:'Service',size:160,produce:'7 Felicidad',desc:'Ofrece servicios municipales y comunitarios.',price:3200},
+ {id:'lb51',name:'Centro Deportivo',type:'Amenity',size:280,produce:'15 Felicidad',desc:'Instalaciones para diversas actividades deportivas.',price:4500},
+ {id:'lb52',name:'Planta de Tratamiento de Residuos',type:'Utility',size:280,produce:'50 Reducción Residuos',desc:'Gestiona eficientemente los residuos de la ciudad.',price:5500},
+ {id:'lb53',name:'Helipuerto',type:'Transport',size:100,produce:'10 Transporte',desc:'Punto de llegada y partida para helicópteros.',price:3000},
+ {id:'lb54',name:'Complejo de Apartamentos',type:'Residential',size:250,produce:'60 Residentes',desc:'Gran complejo de viviendas para muchas familias.',price:6000},
+ {id:'lb55',name:'Fábrica de Electrónica',type:'Factory',size:350,produce:'30 Electrónica',desc:'Produce componentes electrónicos de alta tecnología.',price:7000},
+ {id:'lb56',name:'Hotel de Lujo',type:'Commercial',size:350,produce:'600 Beneficio',desc:'Atrae turistas de alto poder adquisitivo.',price:8500},
+ {id:'lb57',name:'Centro de Investigación Médica',type:'Service',size:400,produce:'30 Salud',desc:'Avanza en la medicina y la salud pública.',price:10000},
+ {id:'lb58',name:'Reserva Natural',type:'Amenity',size:300,produce:'10 Felicidad',desc:'Espacio protegido para la naturaleza y la recreación.',price:2000},
+ {id:'lb59',name:'Desalinizadora',type:'Utility',size:250,produce:'300 Agua',desc:'Convierte agua de mar en agua potable.',price:7000},
+ {id:'lb60',name:'Metro',type:'Transport',size:500,produce:'80 Transporte',desc:'Sistema de transporte subterráneo eficiente.',price:12000},
+ {id:'lb61',name:'Barrio de Adosados',type:'Residential',size:250,produce:'40 Residentes',desc:'Un barrio tranquilo con casas familiares.',price:5000},
+ {id:'lb62',name:'Fábrica de Automóviles',type:'Factory',size:500,produce:'10 Vehículos',desc:'Produce vehículos para la ciudad y exportación.',price:15000},
+ {id:'lb63',name:'Distrito de Oficinas',type:'Commercial',size:400,produce:'700 Beneficio',desc:'Concentración de negocios y empleo.',price:9000},
+ {id:'lb64',name:'Academia de Policía',type:'Service',size:200,produce:'20 Seguridad',desc:'Entrena a futuros agentes de policía.',price:4000},
+ {id:'lb65',name:'Zoo',type:'Amenity',size:450,produce:'25 Felicidad',desc:'Una atracción popular para toda la familia.',price:9500},
+ {id:'lb66',name:'Planta de Biomasa',type:'Utility',size:300,produce:'180 Energía',desc:'Genera energía a partir de residuos orgánicos.',price:6000},
+ {id:'lb67',name:'Ferry Terminal',type:'Transport',size:200,produce:'20 Transporte',desc:'Conecta tu ciudad por rutas marítimas cortas.',price:4000},
+ {id:'lb68',name:'Bloque de Viviendas Sociales',type:'Residential',size:160,produce:'25 Residentes',desc:'Viviendas asequibles para la población.',price:2000},
+ {id:'lb69',name:'Impresora 3D Industrial',type:'Factory',size:300,produce:'5 Productos Personalizados',desc:'Produce productos personalizados y de alta tecnología.',price:11000},
+ {id:'lb70',name:'Galería de Arte',type:'Commercial',size:180,produce:'250 Beneficio',desc:'Vende obras de arte y fomenta la cultura.',price:5500},
+ {id:'lb71',name:'Archivo Central',type:'Service',size:100,produce:'5 Administración',desc:'Gestiona los documentos y registros de la ciudad.',price:1500},
+ {id:'lb72',name:'Piscina Olímpica',type:'Amenity',size:320,produce:'18 Felicidad',desc:'Instalaciones deportivas y recreativas de primer nivel.',price:6000},
+ {id:'lb73',name:'Red de Fibra Óptica',type:'Utility',size:100,produce:'100 Comunicación',desc:'Proporciona internet ultrarrápido a toda la ciudad.',price:8000},
+ {id:'lb74',name:'Teleférico Turístico',type:'Transport',size:150,produce:'80 Turismo',desc:'Transporte pintoresco que atrae a los turistas.',price:5000},
+ {id:'lb75',name:'Solar en Centro Ciudad',type:'Land',size:100,produce:'',desc:'Terreno muy valioso en el corazón de la ciudad.',price:12000},
+ {id:'lb76',name:'Mansión Exclusiva',type:'Residential',size:300,produce:'5 Residentes',desc:'Residencia de lujo con alta calidad de vida.',price:20000},
+ {id:'lb77',name:'Centro de Robótica',type:'Factory',size:400,produce:'5 Robots',desc:'Investiga y produce robots avanzados.',price:18000},
+ {id:'lb78',name:'Bolsa de Valores',type:'Commercial',size:380,produce:'1500 Beneficio',desc:'El corazón financiero de tu imperio.',price:25000},
+ {id:'lb79',name:'Centro de Control Aéreo',type:'Service',size:200,produce:'25 Seguridad',desc:'Gestiona el tráfico aéreo de tu aeropuerto.',price:6000},
+ {id:'lb80',name:'Jardines Colgantes',type:'Amenity',size:300,produce:'20 Felicidad',desc:'Belleza natural y atracción turística.',price:7500},
+ {id:'lb81',name:'Planta Geotérmica',type:'Utility',size:280,produce:'250 Energía',desc:'Genera energía a partir del calor de la Tierra.',price:9000},
+ {id:'lb82',name:'Puente Emblemático',type:'Transport',size:500,produce:'30 Transporte',desc:'Una maravilla arquitectónica que facilita el tráfico y atrae visitantes.',price:10000},
+ {id:'lb83',name:'Parcela Ecológica',type:'Land',size:180,produce:'5 Medio Ambiente',desc:'Terreno protegido para construcciones sostenibles.',price:3000},
+ {id:'lb84',name:'Eco-Viviendas',type:'Residential',size:220,produce:'20 Residentes',desc:'Viviendas con bajo impacto ambiental.',price:5500},
+ {id:'lb85',name:'Granja Solar Flotante',type:'Factory',size:600,produce:'400 Energía',desc:'Innovadora fuente de energía renovable en el agua.',price:13000},
+ {id:'lb86',name:'Distrito de Entretenimiento',type:'Commercial',size:450,produce:'800 Beneficio',desc:'Zona vibrante con ocio y tiendas para atraer a multitudes.',price:10000},
+ {id:'lb87',name:'Sistema de Drones de Vigilancia',type:'Service',size:50,produce:'30 Seguridad',desc:'Tecnología avanzada para la seguridad de la ciudad.',price:7000},
+ {id:'lb88',name:'Acuario Gigante',type:'Amenity',size:500,produce:'180 Turismo',desc:'Una impresionante exhibición de vida marina.',price:12000},
+ {id:'lb89',name:'Planta de Fusión Nuclear',type:'Utility',size:700,produce:'1000 Energía',desc:'La fuente de energía más avanzada y poderosa.',price:30000},
+ {id:'lb90',name:'Lanzadera Espacial',type:'Transport',size:800,produce:'500 Turismo',desc:'Conecta tu ciudad con el espacio y el turismo interplanetario.',price:50000}
+];
+const landById=Object.fromEntries(LAND_BUILDINGS.map(b=>[b.id,b]));
+
+let brokerLandType='ALL';
+let buyQty=50;
+
+function renderLandGrid(){
+ const q=norm($('searchM').value||'');
+ const landType=brokerLandType||'ALL';
+ const landTypesPresent=[...new Set(LAND_BUILDINGS.map(b=>b.type))];
+ let typeBar=`<div class="lc-btn${landType==='ALL'?' active':''}" data-land-type="ALL">📋 Todos</div>`;
+ landTypesPresent.forEach(t=>{typeBar+=`<div class="lc-btn${landType===t?' active':''}" data-land-type="${t}">${LAND_ICONS[t]||'🏗️'} ${translateType(t)}</div>`;});
+ $('landTypeBar').innerHTML=typeBar;
+
+ const items=(landType==='ALL'?LAND_BUILDINGS:LAND_BUILDINGS.filter(b=>b.type===landType)).filter(b=>!q||norm(b.name).includes(q));
+ const cards=items.map(b=>{
+  const owned=(S.landBuildings&&S.landBuildings[b.id])||0;
+  const canAfford=S.wallet>=b.price;
+  return `<div class="land-card">
+   <h3>${LAND_ICONS[b.type]||'🏗️'} ${b.name}</h3>
+   <div class="land-meta">Tipo: ${translateType(b.type)}</div>
+   <div class="land-meta">Tamaño: ${b.size} m²</div>
+   <div class="land-produce">${b.produce?('Produce: '+b.produce):'No produce directamente.'}</div>
+   <div class="land-desc">${b.desc}</div>
+   <div class="land-price">Precio: ${fmtEuroInt(b.price)}</div>
+   ${owned?`<span class="land-owned">✅ Tienes: ${owned}</span>`:''}
+   <button class="btn" data-buy-land="${b.id}" ${canAfford?'':'disabled'}>${canAfford?'🏷️ Comprar':'💼 Sin cartera'}</button>
+  </div>`;
+ }).join('');
+ $('landGrid').innerHTML=cards||'<div class="emptybox">No hay terrenos o edificios en esta categoría.</div>';
+
+ $('landTypeBar').querySelectorAll('[data-land-type]').forEach(el=>{
+  el.onclick=()=>{brokerLandType=el.dataset.landType;renderLandGrid();};
+ });
+ $('landGrid').querySelectorAll('[data-buy-land]').forEach(btn=>{
+  btn.onclick=e=>{
+   e.stopPropagation();
+   const item=landById[btn.dataset.buyLand];if(!item)return;
+   if(S.wallet<item.price){toast('💼 No te llega la cartera.');return;}
+   S.wallet-=item.price;
+   S.landBuildings[item.id]=(S.landBuildings[item.id]||0)+1;
+   logEconomy('Terrenos',`Compra de ${item.name}`,item.price,'Broker');
+   toast(`✅ ${item.name} adquirido por ${fmtEuroInt(item.price)}.`);
+   save();updateHUD();renderLandGrid();
+  };
+ });
+}
+
+$('searchM').addEventListener('input',renderLandGrid);
+setInterval(()=>{S=loadState()||S;updateHUD();},5000);
+updateHUD();renderLandGrid();
+</script>
+</body>
+</html>
