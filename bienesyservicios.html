@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bienes y Servicios — Mi Ciudad</title>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow+Semi+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+:root{--bg:#0f2f22;--paper:#fdf7ea;--paper2:#f2e7cd;--ink:#26221c;--red:#d93a2b;--red2:#a92417;
+--yellow:#ffcf3f;--green:#3ecf6f;--line:#e2d4b2;--shadow:#1e1a17}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Barlow Semi Condensed',sans-serif;color:var(--ink);background:
+ radial-gradient(1200px 500px at 50% -10%,#1b4a35 0%,transparent 60%),
+ repeating-linear-gradient(45deg,rgba(255,255,255,.015) 0 2px,transparent 2px 26px),var(--bg);
+ min-height:100vh;overflow-x:hidden}
+.num{font-variant-numeric:tabular-nums}button{font-family:inherit;cursor:pointer;user-select:none}
+#topbar{position:sticky;top:0;z-index:60;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;
+ padding:8px 12px;background:linear-gradient(#0c281c,#0a2217);border-bottom:3px solid #1d5a41}
+.chip{background:#12382a;border:2px solid #1d5a41;color:#e9f5ec;border-radius:10px;padding:5px 11px;font-size:.92rem;
+ display:flex;align-items:center;gap:6px;box-shadow:0 3px 0 rgba(0,0,0,.3)}
+.chip b{color:#fff}
+.btn{border:2px solid var(--shadow);border-radius:8px;padding:6px 12px;font-weight:700;font-size:.88rem;
+ box-shadow:0 3px 0 var(--shadow);transition:transform .1s;background:var(--yellow)}
+.btn:hover{transform:translateY(-2px)}.btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--shadow)}
+.btn.red{background:var(--red);color:#fff}.btn.ghost{background:#fff}.btn.grn{background:var(--green);color:#fff}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+main.wrap{max-width:980px;margin:14px auto 60px;padding:0 12px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;position:sticky;top:64px;z-index:40;
+ background:rgba(15,47,34,.9);backdrop-filter:blur(2px);padding:8px;border-radius:12px}
+.tabs .btn{flex:1 1 150px}
+.mcard{position:relative;background:var(--paper);border:3px solid var(--shadow);border-radius:14px;width:100%;padding:20px;
+ box-shadow:0 10px 0 var(--shadow),0 24px 50px rgba(0,0,0,.5);margin-bottom:16px;display:none}
+.mcard.active{display:block}
+.mcard h2{font-family:'Bungee';color:var(--red);font-size:1.3rem;margin-bottom:4px}
+.mcard>p.intro{font-size:.85rem;color:#6b6250;margin-bottom:12px}
+.sect{background:#fff;border:2px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px}
+.sect h4{font-family:'Bungee';font-size:.86rem;color:var(--red);margin-bottom:8px}
+.sect>p.sub{font-size:.8rem;color:#6b6250;margin:-4px 0 8px}
+.item{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px dashed var(--line);
+ padding:8px 2px;flex-wrap:wrap}
+.item:last-child{border:none}
+.item .info{display:flex;align-items:center;gap:8px;flex:1 1 220px;min-width:0}
+.item .info b{display:block;font-size:.9rem}
+.item .info span.desc{font-size:.76rem;color:#6b6250;display:block}
+.item .price{font-weight:700;font-size:.85rem;white-space:nowrap}
+.badge{display:inline-block;background:#fff3cd;border:1px solid #e6b31e;border-radius:6px;padding:1px 6px;
+ font-size:.68rem;color:#8a6d1a;margin-left:4px}
+.toggle{display:flex;align-items:center;gap:8px}
+.orow{display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:1px dashed var(--line);
+ padding:6px 0;font-size:.88rem;flex-wrap:wrap}
+.orow:last-child{border:none}
+.rowflex{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.valencia-message{background:#fff3cd;border:2px dashed #e6b31e;border-radius:9px;padding:9px 11px;margin:0 0 10px;
+ font-size:.88rem;line-height:1.3;color:#5c4821;font-weight:600}
+.empty-log{text-align:center;background:#fff3cd;border:2px dashed #e6b31e;border-radius:9px;padding:14px;color:#6b6250;font-size:.85rem}
+.toast{background:var(--shadow);color:#fff;padding:9px 18px;border-radius:10px;border:2px solid var(--yellow);
+ font-weight:600;animation:pop .25s;max-width:92vw;text-align:center}
+@keyframes pop{from{transform:scale(.7);opacity:0}}
+#toasts{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:150;display:flex;flex-direction:column;gap:8px;align-items:center}
+.shake{animation:shk .35s}@keyframes shk{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+input[type=number],input[type=text]{border:2px solid var(--line);border-radius:8px;padding:6px 9px;font-family:inherit;font-size:.86rem}
+select{border:2px solid var(--line);border-radius:8px;padding:6px 9px;font-family:inherit;font-size:.86rem;background:#fff}
+@media(max-width:560px){.mcard{padding:14px}}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <button class="btn ghost" id="btnBack">⬅️ Volver a Mi Ciudad</button>
+  <div class="chip">💼 Cartera <b class="num" id="tbWallet">€0,00</b></div>
+  <div class="chip" id="tbClass">🎭 Clase: -</div>
+  <div class="chip" id="tbMode">🤖 Offline</div>
+</div>
+
+<main class="wrap">
+  <div class="tabs">
+    <button class="btn grn" data-tab="finanzas">💳 Financieros y Deudas</button>
+    <button class="btn" data-tab="bienes">📦 Bienes y Suministros</button>
+    <button class="btn" data-tab="marketing">📣 Marketing y Red</button>
+    <button class="btn" data-tab="bienestar">🧘 Bienestar y Estilo de Vida</button>
+  </div>
+
+  <!-- ===================== 1. SERVICIOS FINANCIEROS Y DEUDAS ===================== -->
+  <div class="mcard active" id="tab-finanzas">
+    <h2>💳 Servicios Financieros y Deudas</h2>
+    <p class="intro">Pide dinero prestado, protégete con seguros, contrata productos bancarios, invierte tus ahorros y consulta tus impuestos. Todo se paga y se cobra desde tu <b>cartera</b> o tu <b>caja</b>, y queda sincronizado con Mi Ciudad.</p>
+
+    <div class="sect"><h4>🏦 Servicios Financieros del Centro Comercial</h4>
+     <p class="sub">Productos bancarios y financieros (los mismos que puedes encontrar en el Centro Comercial). Se pagan desde tu cartera y algunos generan ingresos pasivos diarios.</p>
+     <div id="financialServicesList"></div>
+    </div>
+
+    <div class="sect"><h4>💼 Préstamos e Hipotecas</h4>
+     <p class="sub">El dinero prestado va directo a tu cartera. Cada préstamo se descuenta solo, un poco cada día real, hasta saldarse.</p>
+     <div id="loanCatalog"></div>
+     <div id="loanActiveList" style="margin-top:8px"></div>
+    </div>
+
+    <div class="sect"><h4>🛡️ Seguros y Coberturas</h4>
+     <p class="sub">Se cobra una prima diaria mientras estén activos. Puedes darlos de baja cuando quieras.</p>
+     <div id="insuranceList"></div>
+    </div>
+
+    <div class="sect"><h4>📈 Inversiones y Activos</h4>
+     <p class="sub">El valor sube y baja con el tiempo según la volatilidad de cada activo. Vende cuando quieras para recuperar tu dinero (con ganancia o pérdida).</p>
+     <div class="rowflex" style="margin-bottom:8px">
+      <select id="investType"></select>
+      <input id="investAmount" type="number" min="1" placeholder="Cantidad a invertir (€)" style="width:190px">
+      <button class="btn grn" id="investBtn">Invertir</button>
+     </div>
+     <div id="investList"></div>
+    </div>
+
+    <div class="sect"><h4>🧾 Impuestos y Licencias</h4>
+     <p class="sub" id="taxInfo">Impuesto patrimonial diario: —</p>
+     <div id="licenseList"></div>
+     <p style="font-size:.78rem;color:#6b6250;margin-top:6px">⚠️ Cuanto más tiempo pases con la caja en números rojos, más riesgo de que Hacienda te haga una auditoría fiscal y te ponga una multa.</p>
+    </div>
+  </div>
+
+  <!-- ===================== 2. BIENES, EQUIPAMIENTO Y SUMINISTROS ===================== -->
+  <div class="mcard" id="tab-bienes">
+    <h2>📦 Bienes, Equipamiento y Suministros</h2>
+    <p class="intro">Mejoras físicas y tecnológicas para tu negocio. Se compran una vez con la <b>caja</b> del súper y su efecto es permanente.</p>
+
+    <div class="sect"><h4>🪑 Mobiliario y Reformas</h4>
+     <p class="sub">Mejoran la imagen de tu local: dan un empujón de reputación inmediato.</p>
+     <div id="furnitureList"></div>
+    </div>
+
+    <div class="sect"><h4>💻 Tecnología y Software</h4>
+     <p class="sub">Automatizan tareas del negocio: generan un pequeño ingreso pasivo a tu cartera cada día.</p>
+     <div id="techList"></div>
+    </div>
+
+    <div class="sect"><h4>🔧 Maquinaria y Suministros</h4>
+     <p class="sub">La refrigeración reduce las mermas de producto fresco a la mitad. El resto genera ingresos pasivos. Para furgonetas de reparto, usa el panel de la Gasolinera en Mi Ciudad.</p>
+     <div id="machineryList"></div>
+    </div>
+
+    <div class="sect"><h4>💡 Suministros Básicos</h4>
+     <p class="sub">Luz, agua, gas e internet: se cobran solos de la caja, un poco cada día real (€25/día). Si te descuidas mucho, tu ánimo se resiente.</p>
+     <p style="font-size:.85rem">Deuda de suministros acumulada: <b id="utilitiesDebt">€0,00</b></p>
+     <div id="utilityUpgradeList"></div>
+    </div>
+  </div>
+
+  <!-- ===================== 3. MARKETING, VISIBILIDAD Y RED ===================== -->
+  <div class="mcard" id="tab-marketing">
+    <h2>📣 Marketing, Visibilidad y Red</h2>
+    <p class="intro">Atrae más clientes a tu súper y hazte un nombre en el barrio.</p>
+
+    <div class="sect"><h4>📢 Publicidad y Marketing</h4>
+     <p class="sub">Cada campaña sube la afluencia de clientes durante unos días de juego (el letrero es permanente). Si ya tienes una campaña activa, se queda con la que dé más beneficio.</p>
+     <div id="campaignList"></div>
+     <div id="campaignActive" style="margin-top:8px"></div>
+    </div>
+
+    <div class="sect"><h4>🤝 Relaciones Públicas y Networking</h4>
+     <p class="sub">Suscripciones e inscripciones de una sola vez que aumentan tu reputación en el barrio.</p>
+     <div id="networkingList"></div>
+    </div>
+  </div>
+
+  <!-- ===================== 4. BIENESTAR Y ESTILO DE VIDA ===================== -->
+  <div class="mcard" id="tab-bienestar">
+    <h2>🧘 Bienestar y Estilo de Vida del Personaje</h2>
+    <p class="intro">Cuida tu energía y tu ánimo para poder rendir cada día en el negocio.</p>
+
+    <div class="sect"><h4>💊 Salud y Energía</h4>
+     <p class="sub">Efecto instantáneo sobre tu energía y tu ánimo, pagado con la cartera.</p>
+     <div id="wellnessList"></div>
+    </div>
+
+    <div class="sect"><h4>🎩 Ocio y Estatus</h4>
+     <p class="sub">Artículos de estilo de vida: algunos son de una sola vez y dan reputación permanente; otros son un capricho puntual.</p>
+     <div id="lifestyleList"></div>
+    </div>
+  </div>
+
+  <div class="mcard active" id="feedCard" style="display:block">
+    <h2>📜 Actividad reciente</h2>
+    <div id="feed"></div>
+  </div>
+</main>
+
+<div id="toasts"></div>
+
+<script>
+/* ========================================================================
+   BIENESYSERVICIOS.HTML
+   Página independiente de servicios financieros, bienes/equipamiento,
+   marketing y bienestar. Lee y escribe el MISMO estado guardado que
+   mi_ciudad.html (misma KEY de localStorage).
+   ======================================================================== */
+const $=id=>document.getElementById(id);
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+const r2=n=>Math.round(n*100)/100;
+const fmt$=n=>'€'+(n||0).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
+const nowMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes();};
+const KEY='superTycoonV2';
+const FB={db:null,uid:null,meet:null};
+const FIREBASE_CONFIG={apiKey:"AIzaSyAonZFfeUCTELdFUhQrPADOPafFA0_Tzeg",authDomain:"juegobarrio-fbe55.firebaseapp.com",projectId:"juegobarrio-fbe55"};
+const FB_OK = typeof firebase!=='undefined' && !FIREBASE_CONFIG.apiKey.startsWith('TU_');
+const ORIGINS={
+ worker:{id:'worker',icon:'📦',name:'Clase trabajadora'},
+ lottery:{id:'lottery',icon:'🎟️',name:'Ganador de lotería'},
+ vulnerable:{id:'vulnerable',icon:'✉️',name:'Clase vulnerable'},
+ digital:{id:'digital',icon:'💻',name:'Emprendedor digital'},
+ heir:{id:'heir',icon:'🏛️',name:'Heredero de negocio familiar'},
+ immigrant:{id:'immigrant',icon:'🌍',name:'Inmigrante emprendedor'}
+};
+
+/* ============ ESTADO COMPARTIDO (idéntico a mi_ciudad.html) ============ */
+function fresh(){const d=new Date();return{
+ name:'SUPERGANGA',pname:'ALEX',mode:'cpu',room:'barrio-1',background:'lottery',loanBalance:0,energyMax:100,
+ cash:500000,wallet:1500000,energy:100,mood:70,day:1,tick:0,clockMin:d.getHours()*60+d.getMinutes(),
+ rep:3,xp:0,level:1,paused:true,started:false,setupComplete:false,muted:false,speed:1,
+ stock:{},prices:{},sold:{},up:{shelf:0,reg:0,mkt:0,sup:0,auto:0,deco:0},
+ tot:{rev:0,buy:0,sal:0,rent:0,cust:0,items:0},dd:{rev:0,buy:0,cust:0,items:0},
+ mk:{},mkPrev:{},event:null,forecast:null,
+ establishmentSuppliers:{},properties:[],landBuildings:{},vanLv:0,fuelToday:false,restDeal:false,catered:false,
+ jobs:[],homes:[],
+ houseUp:{sofa:0,cocina:0,jardin:0},shifts:0,napped:false,greeted:{},
+ orders:[],offers:[],rel:{},botState:{},econLog:[],
+ nodes:{},ownedNodes:{},rentedNodes:{},
+ districts:{}, districtBonuses:{}, auctions:[], supplyContracts:[], priceCartels:[], globalEvents:[], dayBonus:null,jobOffers:{},
+ saveId:null,
+ missions:[], missionsLevel:0, missionRewardGiven:false, taxPaidCount:0,
+ superUnlocked:false,
+ stores:{},
+ landRush:{active:false,nextEventAt:0,startsAt:null,endsAt:null,nodes:[]}, landRushWon:[],
+ bys:{loans:[],insurances:{medical:false,business:false,liability:false},investments:[],owned:[],
+  networking:[],campaignExpiresAt:0,campaignBoost:0,utilitiesDebt:0,lastCheckedAt:0,
+  finServices:{}}
+};}
+let S=fresh();
+
+function save(){
+ if(S.started&&S.setupComplete&&!S.saveId){
+  S.saveId='sv_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+ }
+ localStorage.setItem(KEY,JSON.stringify(S));
+ mirrorSaveToRegistry();
+}
+const SAVES_KEY='stSavesV1';
+function loadSavesRegistry(){try{return JSON.parse(localStorage.getItem(SAVES_KEY))||{};}catch(e){return{};}}
+function writeSavesRegistry(reg){try{localStorage.setItem(SAVES_KEY,JSON.stringify(reg));}catch(e){}}
+function sameSaveIdentity(e1,e2){
+ return e1.pname===e2.pname&&e1.background===e2.background&&e1.mode===e2.mode&&e1.room===e2.room
+  &&e1.day===e2.day&&e1.wallet===e2.wallet&&e1.cash===e2.cash&&e1.level===e2.level;
+}
+function mirrorSaveToRegistry(){
+ if(!S.started||!S.setupComplete)return;
+ if(!S.saveId)S.saveId='sv_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+ const reg=loadSavesRegistry();
+ const mine={pname:S.pname,background:S.background,mode:S.mode,room:S.room,day:S.day,
+  wallet:S.wallet,cash:S.cash,level:S.level};
+ for(const id of Object.keys(reg)){
+  if(id!==S.saveId && sameSaveIdentity(reg[id],mine)) delete reg[id];
+ }
+ reg[S.saveId]=Object.assign({},mine,{updatedAt:Date.now(),state:JSON.parse(JSON.stringify(S))});
+ writeSavesRegistry(reg);
+}
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(!d||!d.stock)return false;
+ const f=fresh();S=Object.assign(f,d);S.up=Object.assign(f.up,d.up);S.tot=Object.assign(f.tot,d.tot);
+ S.dd=Object.assign(f.dd,d.dd);S.houseUp=Object.assign(f.houseUp,d.houseUp);
+ S.nodes=Object.assign(f.nodes,d.nodes||{});
+ S.ownedNodes=Object.assign(f.ownedNodes,d.ownedNodes||{});
+ S.rentedNodes=Object.assign(f.rentedNodes,d.rentedNodes||{});
+ S.districts=S.districts||{};S.districtBonuses=S.districtBonuses||{};
+ S.auctions=S.auctions||[];S.supplyContracts=S.supplyContracts||[];
+ S.priceCartels=S.priceCartels||[];S.globalEvents=S.globalEvents||[];
+ S.dayBonus=S.dayBonus||null;S.jobs=S.jobs||[];S.homes=S.homes||[];
+ S.missions=S.missions||[];S.missionsLevel=S.missionsLevel||0;S.missionRewardGiven=S.missionRewardGiven||false;S.taxPaidCount=S.taxPaidCount||0;
+ S.superUnlocked = d.superUnlocked || false;
+ S.stores = d.stores || {};
+ S.landRush = d.landRush || {active:false,nextEventAt:0,startsAt:null,endsAt:null,nodes:[]};
+ S.landRush.nodes = S.landRush.nodes || [];
+ S.landRushWon = d.landRushWon || [];
+ S.priceCartelBaseline = d.priceCartelBaseline || {};
+ S.establishmentSuppliers = d.establishmentSuppliers || {};
+ S.bys = d.bys || {loans:[],insurances:{medical:false,business:false,liability:false},investments:[],owned:[],
+  networking:[],campaignExpiresAt:0,campaignBoost:0,utilitiesDebt:0,lastCheckedAt:0,finServices:{}};
+ S.bys.loans=S.bys.loans||[];S.bys.insurances=S.bys.insurances||{};S.bys.investments=S.bys.investments||[];
+ S.bys.owned=S.bys.owned||[];S.bys.networking=S.bys.networking||[];
+ S.bys.finServices=S.bys.finServices||{};
+ S.clockMin=nowMin();return true;}catch(e){return false;}}
+
+/* ============ UI BÁSICA ============ */
+function toast(m){const t=document.createElement('div');t.className='toast';t.innerHTML=m;$('toasts').appendChild(t);setTimeout(()=>t.remove(),3600);}
+function feed(m,cls=''){const f=$('feed');if(!f)return;const d=document.createElement('div');if(cls)d.className=cls;
+ const h=Math.floor(S.clockMin/60),mn=S.clockMin%60;
+ d.innerHTML=`<span style="color:#b3a685;font-size:.7rem;margin-right:5px">${String(h).padStart(2,'0')}:${String(mn).padStart(2,'0')}</span>${m}`;
+ f.prepend(d);while(f.children.length>45)f.lastChild.remove();}
+function shakeEl(e){if(!e)return;e.classList.remove('shake');void e.offsetWidth;e.classList.add('shake');}
+function logEconomy(kind,text,amount=0,actor='Sistema'){S.econLog=S.econLog||[];S.econLog.unshift({day:S.day,clock:S.clockMin,kind,text,amount,actor});if(S.econLog.length>80)S.econLog.length=80;}
+function announceToChat(msg){
+ if(!FB.db)return;
+ FB.db.collection('rooms').doc(S.room).collection('chat').add({
+  name:'SISTEMA',emoji:'🏦',msg,ts:firebase.firestore.FieldValue.serverTimestamp()
+ }).catch(()=>{});
+}
+function updateTopbar(){
+ $('tbWallet').textContent=fmt$(S.wallet);
+ $('tbClass').textContent='🎭 Clase: '+(ORIGINS[S.background]?.name||'Desconocida');
+ $('tbMode').textContent=S.mode==='online'?'🌐 Multijugador':'🤖 Offline';
+}
+document.querySelectorAll('.tabs [data-tab]').forEach(btn=>{
+ btn.addEventListener('click',()=>{
+  document.querySelectorAll('.tabs [data-tab]').forEach(b=>b.classList.remove('grn'));
+  btn.classList.add('grn');
+  document.querySelectorAll('.mcard').forEach(c=>{if(c.id!=='feedCard')c.classList.remove('active');});
+  $('tab-'+btn.dataset.tab).classList.add('active');
+ });
+});
+$('btnBack').addEventListener('click',()=>{save();window.location.href='mi_ciudad.html';});
+
+/* ============ PRNG determinista (para inversiones) ============ */
+function seededRandom(seed){let t=seed>>>0;return function(){t+=0x6D2B79F5;let r=Math.imul(t^(t>>>15),1|t);
+ r=(r+Math.imul(r^(r>>>7),61|r))^r;return((r^(r>>>14))>>>0)/4294967296;};}
+function hashStr(str){let h=0;for(let i=0;i<str.length;i++){h=(h<<5)-h+str.charCodeAt(i);h|=0;}return h;}
+
+/* ============================================================
+   NUEVOS SERVICIOS FINANCIEROS (importados del Centro Comercial)
+   ============================================================ */
+const FIN_SERVICES=[
+ {id:'tarjeta_pass', name:'Tarjeta Pass Premium', icon:'💳', cost:0, recurring:0,
+  desc:'Programa de fidelización. Actívala gratis y obtén +0,05 de reputación cada día. Totalmente gratuita.',
+  repDaily:0.05},
+ {id:'seguro_hogar', name:'Seguro hogar', icon:'🛡️', cost:199, recurring:0,
+  desc:'Cobertura anual. Reduce un 30% la pérdida de ánimo si tu cartera se queda en números rojos.',
+  moodShield:0.3},
+ {id:'prestamo_personal', name:'Préstamo personal', icon:'💰', cost:0, recurring:0,
+  desc:'Préstamo rápido de 5.000€ directo a tu cartera. Debes devolver 6.500€, pero sin cuotas diarias (a tu ritmo).',
+  loan:{amount:5000, total:6500}},
+ {id:'plan_pensiones', name:'Plan pensiones', icon:'📈', cost:3000, recurring:0,
+  desc:'Aportación única que genera +8€/día a tu cartera y +0,02 de reputación diaria mientras esté activo.'},
+ {id:'cuenta_remunerada', name:'Cuenta remunerada', icon:'🏦', cost:1000, recurring:0,
+  desc:'Deposita una vez y recibe +5€/día de intereses a tu cartera de forma indefinida.'},
+ {id:'fondo_inversion', name:'Fondo inversión', icon:'📊', cost:5000, recurring:0,
+  desc:'Fondo a largo plazo: +12€/día a tu cartera y +0,01 de reputación diaria mientras lo mantengas.'}
+];
+
+function renderFinancialServices(){
+ const own=S.bys.finServices||{};
+ $('financialServicesList').innerHTML=FIN_SERVICES.map(f=>{
+  const active=!!own[f.id];
+  const priceLabel=f.cost===0?'Gratis':fmt$(f.cost)+' (cartera)';
+  const status = active
+    ? `<span style="font-weight:700;color:#1e9e50">✅ Activo</span>`
+    : `<span class="price">${priceLabel}</span>`;
+  return `<div class="item">
+   <span class="info"><span style="font-size:1.3rem">${f.icon}</span>
+    <span><b>${f.name}</b><span class="desc">${f.desc}</span></span></span>
+   ${status}
+   <button class="btn ${active?'red':'grn'}" data-fs="${f.id}" ${!active&&S.wallet<f.cost?'disabled':''}>${active?'Cancelar':'Contratar'}</button>
+  </div>`;
+ }).join('');
+ document.querySelectorAll('[data-fs]').forEach(b=>b.addEventListener('click',()=>toggleFinancialService(b.dataset.fs)));
+}
+
+function toggleFinancialService(id){
+ const f=FIN_SERVICES.find(x=>x.id===id);if(!f)return;
+ S.bys.finServices=S.bys.finServices||{};
+ const active=!!S.bys.finServices[id];
+
+ if(!active){
+  // Contratar
+  if(f.cost>0&&S.wallet<f.cost){toast('💼 No te llega la cartera.');return;}
+  if(f.cost>0){S.wallet-=f.cost;}
+  S.bys.finServices[id]=true;
+  // Préstamo personal: ingresa al instante 5.000€ y crea deuda
+  if(f.loan){
+   S.wallet+=f.loan.amount;
+   S.bys.loans=S.bys.loans||[];
+   S.bys.loans.push({
+    id:'fs_loan_'+Date.now(),
+    productId:'prestamo_personal_fs',
+    name:'Préstamo personal (Bienes y Servicios)',
+    balance:r2(f.loan.total),
+    dailyPayment:0, // sin cuotas diarias: se amortiza cuando el jugador quiera
+    takenAt:Date.now()
+   });
+   announceToChat(`💰 ${S.pname} ha solicitado un Préstamo personal de 5.000€.`);
+  }
+  logEconomy('Financiero',`Contratado: ${f.name}`,f.cost,'Tú');
+  toast(`${f.icon} ${f.name} contratado.`);
+  if(f.id==='tarjeta_pass')announceToChat(`💳 ${S.pname} ha activado su Tarjeta Pass Premium.`);
+  if(f.id==='plan_pensiones')announceToChat(`📈 ${S.pname} ha contratado un Plan de Pensiones.`);
+  if(f.id==='cuenta_remunerada')announceToChat(`🏦 ${S.pname} ha abierto una Cuenta Remunerada.`);
+  if(f.id==='fondo_inversion')announceToChat(`📊 ${S.pname} ha suscrito un Fondo de Inversión.`);
+ } else {
+  // Cancelar
+  if(f.loan){
+   // Buscar el préstamo asociado y saldarlo automáticamente con cartera (o cancelar si no hay deuda)
+   const loanIdx=(S.bys.loans||[]).findIndex(l=>l.productId==='prestamo_personal_fs');
+   if(loanIdx>=0){
+    const loan=S.bys.loans[loanIdx];
+    if(S.wallet<loan.balance){
+     toast(`💼 Para cancelar debes pagar antes el préstamo (${fmt$(loan.balance)}).`);
+     return;
+    }
+    S.wallet-=loan.balance;
+    S.bys.loans.splice(loanIdx,1);
+   }
+  }
+  S.bys.finServices[id]=false;
+  toast(`${f.icon} ${f.name} cancelado.`);
+  logEconomy('Financiero',`Cancelado: ${f.name}`,0,'Tú');
+ }
+ renderFinancialServices();renderLoanActive();updateTopbar();save();
+}
+
+/* Procesa los ingresos diarios de los servicios financieros contratados. */
+function processFinancialServicesIncome(elapsedDays){
+ const own=S.bys.finServices||{};
+ if(!own)return 0;
+ let total=0;
+ if(own.tarjeta_pass){
+  S.rep=Math.min(5,(S.rep||3)+0.05*elapsedDays);
+ }
+ if(own.seguro_hogar){
+  if(S.wallet<0){
+   // Reduce la pérdida de ánimo si tienes el seguro contratado
+   S.mood=Math.max(0,(S.mood||70)+0.5*elapsedDays);
+  }
+ }
+ if(own.plan_pensiones){
+  total+=8*elapsedDays;
+  S.rep=Math.min(5,(S.rep||3)+0.02*elapsedDays);
+ }
+ if(own.cuenta_remunerada){
+  total+=5*elapsedDays;
+ }
+ if(own.fondo_inversion){
+  total+=12*elapsedDays;
+  S.rep=Math.min(5,(S.rep||3)+0.01*elapsedDays);
+ }
+ return total;
+}
+
+/* ============================================================
+   1. SERVICIOS FINANCIEROS Y DEUDAS
+   ============================================================ */
+const LOAN_PRODUCTS=[
+ {id:'micro',name:'Microcrédito',icon:'✉️',tag:'Alto interés',ideal:'Clase Vulnerable',amount:3000,dailyPayment:190,multiplier:1.35,
+  desc:'Rápido de conseguir, pero caro de devolver.'},
+ {id:'bank',name:'Préstamo bancario estándar',icon:'🏦',tag:'Interés moderado',ideal:'Clase Trabajadora',amount:20000,dailyPayment:700,multiplier:1.18,
+  desc:'Condiciones normales para un negocio en marcha.'},
+ {id:'vc',name:'Línea de crédito / capital riesgo',icon:'💹',tag:'Gran capital',ideal:'Emprendedor Digital / Ganador de Lotería',amount:150000,dailyPayment:3600,multiplier:1.10,
+  desc:'Mucho dinero de golpe para inversores ambiciosos.'}
+];
+function renderLoanCatalog(){
+ $('loanCatalog').innerHTML=LOAN_PRODUCTS.map(l=>`
+  <div class="item">
+   <span class="info"><span style="font-size:1.2rem">${l.icon}</span>
+    <span><b>${l.name} <span class="badge">${l.tag}</span></b>
+    <span class="desc">${l.desc} · 💡 Ideal para: ${l.ideal}</span></span></span>
+   <span class="price">+${fmt$(l.amount)}<br><span style="font-weight:400;font-size:.72rem">cuota ${fmt$(l.dailyPayment)}/día</span></span>
+   <button class="btn grn" data-loan="${l.id}">Solicitar</button>
+  </div>`).join('');
+ document.querySelectorAll('[data-loan]').forEach(b=>b.addEventListener('click',()=>requestLoan(b.dataset.loan)));
+}
+function requestLoan(productId){
+ const l=LOAN_PRODUCTS.find(x=>x.id===productId);if(!l)return;
+ if((S.bys.loans||[]).some(x=>x.productId===productId)){toast('🏦 Ya tienes un préstamo de ese tipo activo.');return;}
+ S.wallet+=l.amount;
+ S.bys.loans.push({id:'loan'+Date.now(),productId,name:l.name,balance:r2(l.amount*l.multiplier),dailyPayment:l.dailyPayment,takenAt:Date.now()});
+ logEconomy('Préstamo',`Solicitaste: ${l.name}`,l.amount,'Banco');
+ toast(`🏦 Te ingresan ${fmt$(l.amount)} de ${l.name} en tu cartera.`);
+ announceToChat(`🏦 ${S.pname} ha pedido un ${l.name}.`);
+ renderFinance();updateTopbar();save();
+}
+function payOffLoan(loanId){
+ const loan=S.bys.loans.find(x=>x.id===loanId);if(!loan)return;
+ const pay=Math.min(loan.balance,S.wallet);
+ if(pay<=0){toast('💼 No te llega la cartera.');return;}
+ S.wallet-=pay;loan.balance=r2(loan.balance-pay);
+ logEconomy('Préstamo',`Amortización de ${loan.name}`,pay,'Tú');
+ if(loan.balance<=0.5){
+  toast(`✅ Préstamo "${loan.name}" saldado.`);
+  S.bys.loans=S.bys.loans.filter(x=>x.id!==loanId);
+ }else{
+  toast(`💸 Amortizaste ${fmt$(pay)} de "${loan.name}".`);
+ }
+ renderFinance();updateTopbar();save();
+}
+function renderLoanActive(){
+ const list=S.bys.loans||[];
+ $('loanActiveList').innerHTML=list.length?list.map(l=>`
+  <div class="orow"><span>💳 <b>${l.name}</b> · pendiente: <b>${fmt$(l.balance)}</b>${l.dailyPayment>0?' · cuota '+fmt$(l.dailyPayment)+'/día':''}</span>
+   <button class="btn" data-payoff="${l.id}">Amortizar con cartera</button></div>`).join('')
+  :'<p style="font-size:.82rem;color:#8a7f68">No tienes préstamos activos.</p>';
+ document.querySelectorAll('[data-payoff]').forEach(b=>b.addEventListener('click',()=>payOffLoan(b.dataset.payoff)));
+}
+
+const INSURANCE_PRODUCTS={
+ medical:{name:'Seguro médico básico',icon:'🩺',dailyPremium:15,
+  desc:'Si tu cartera está en números rojos, el golpe a tu energía y ánimo se reduce a la mitad, y te recuperas un poco cada día.'},
+ business:{name:'Seguro de local (incendio/robo)',icon:'🏪',dailyPremium:35,
+  desc:'Si tu caja se queda en negativo, el seguro cubre la diferencia hasta dejarla a cero.'},
+ liability:{name:'Responsabilidad civil',icon:'📋',dailyPremium:20,
+  desc:'Tu reputación se recupera un poco cada día por la tranquilidad de estar cubierto ante incidentes.'}
+};
+function renderInsurance(){
+ $('insuranceList').innerHTML=Object.entries(INSURANCE_PRODUCTS).map(([key,ins])=>{
+  const active=!!S.bys.insurances[key];
+  return `<div class="item">
+   <span class="info"><span style="font-size:1.2rem">${ins.icon}</span>
+    <span><b>${ins.name}</b><span class="desc">${ins.desc}</span></span></span>
+   <span class="price">${fmt$(ins.dailyPremium)}/día</span>
+   <span class="toggle"><button class="btn ${active?'red':'grn'}" data-ins="${key}">${active?'Dar de baja':'Contratar'}</button></span>
+  </div>`;
+ }).join('');
+ document.querySelectorAll('[data-ins]').forEach(b=>b.addEventListener('click',()=>toggleInsurance(b.dataset.ins)));
+}
+function toggleInsurance(key){
+ S.bys.insurances[key]=!S.bys.insurances[key];
+ toast(S.bys.insurances[key]?`🛡️ Seguro contratado: ${INSURANCE_PRODUCTS[key].name}`:`🛡️ Has dado de baja: ${INSURANCE_PRODUCTS[key].name}`);
+ renderInsurance();save();
+}
+
+const INVESTMENT_TYPES=[
+ {id:'fondo',name:'Fondo de inversión',icon:'📈',volatility:0.15,min:5000},
+ {id:'acciones',name:'Acciones',icon:'📊',volatility:0.35,min:2000},
+ {id:'inmueble',name:'Activo inmobiliario',icon:'🏢',volatility:0.08,min:50000},
+ {id:'cripto',name:'Criptomonedas',icon:'🪙',volatility:0.6,min:1000}
+];
+function investmentCurrentValue(inv){
+ const type=INVESTMENT_TYPES.find(t=>t.id===inv.type);
+ const volatility=type?type.volatility:0.2;
+ const rand=seededRandom(hashStr(inv.id));
+ const daysElapsed=Math.max(0,(Date.now()-inv.boughtAt)/(24*3600*1000));
+ const steps=Math.min(2000,Math.max(0,Math.floor(daysElapsed*4)));
+ let value=inv.boughtValue;
+ for(let i=0;i<steps;i++){
+  const r=rand()*2-1;
+  value*=(1+r*volatility*0.12);
+ }
+ return Math.max(inv.boughtValue*0.05,r2(value));
+}
+function renderInvestOptions(){
+ $('investType').innerHTML=INVESTMENT_TYPES.map(t=>`<option value="${t.id}">${t.icon} ${t.name} (mín. ${fmt$(t.min)})</option>`).join('');
+}
+function buyInvestment(){
+ const typeId=$('investType').value;
+ const amount=parseFloat($('investAmount').value);
+ const type=INVESTMENT_TYPES.find(t=>t.id===typeId);if(!type)return;
+ if(isNaN(amount)||amount<type.min){toast(`📈 El mínimo para ${type.name} es ${fmt$(type.min)}.`);return;}
+ if(S.wallet<amount){toast('💼 No te llega la cartera.');shakeEl($('topbar'));return;}
+ S.wallet-=amount;
+ S.bys.investments.push({id:'inv'+Date.now()+Math.random().toString(36).slice(2,5),type:typeId,name:type.name,icon:type.icon,boughtValue:amount,boughtAt:Date.now()});
+ logEconomy('Inversión',`Compra de ${type.name}`,amount,'Tú');
+ toast(`📈 Invertiste ${fmt$(amount)} en ${type.name}.`);
+ $('investAmount').value='';
+ renderInvestments();updateTopbar();save();
+}
+function sellInvestment(id){
+ const inv=S.bys.investments.find(x=>x.id===id);if(!inv)return;
+ const value=investmentCurrentValue(inv);
+ S.wallet+=value;
+ const gain=value-inv.boughtValue;
+ S.bys.investments=S.bys.investments.filter(x=>x.id!==id);
+ logEconomy('Inversión',`Venta de ${inv.name}`,value,'Tú');
+ toast(`${gain>=0?'📈':'📉'} Vendiste ${inv.name} por ${fmt$(value)} (${gain>=0?'+':''}${fmt$(gain)})`);
+ renderInvestments();updateTopbar();save();
+}
+function renderInvestments(){
+ const list=S.bys.investments||[];
+ $('investList').innerHTML=list.length?list.map(inv=>{
+  const value=investmentCurrentValue(inv);
+  const gain=value-inv.boughtValue;
+  return `<div class="orow"><span>${inv.icon} <b>${inv.name}</b> · comprado por ${fmt$(inv.boughtValue)}</span>
+   <span style="font-weight:700;color:${gain>=0?'#1e9e50':'#c0392b'}">${fmt$(value)} (${gain>=0?'+':''}${fmt$(gain)})</span>
+   <button class="btn" data-sell="${inv.id}">Vender</button></div>`;
+ }).join(''):'<p style="font-size:.82rem;color:#8a7f68">No tienes inversiones todavía.</p>';
+ document.querySelectorAll('[data-sell]').forEach(b=>b.addEventListener('click',()=>sellInvestment(b.dataset.sell)));
+}
+
+const LICENSE_PRODUCTS=[
+ {id:'licencia',name:'Licencia de apertura municipal',icon:'📜',cost:40000,
+  desc:'Trámite ante el ayuntamiento. Una vez concedida, tus próximos establecimientos cuestan un 10% menos.'}
+];
+function renderLicenses(){
+ $('taxInfo').textContent=`Impuesto patrimonial diario: ${fmt$(S.originTax||0)} (se cobra solo cada día, ya integrado en Mi Ciudad).`;
+ $('licenseList').innerHTML=LICENSE_PRODUCTS.map(l=>{
+  const owned=(S.bys.owned||[]).includes(l.id);
+  return `<div class="item">
+   <span class="info"><span style="font-size:1.2rem">${l.icon}</span>
+    <span><b>${l.name}</b><span class="desc">${l.desc}</span></span></span>
+   <span class="price">${fmt$(l.cost)} (caja)</span>
+   <button class="btn ${owned?'ghost':'grn'}" data-license="${l.id}" data-cost="${l.cost}" ${owned||S.cash<l.cost?'disabled':''}>${owned?'✅ Concedida':'Solicitar'}</button>
+  </div>`;
+ }).join('');
+ document.querySelectorAll('[data-license]').forEach(b=>b.addEventListener('click',()=>buyOneTimeFromCash(b.dataset.license,+b.dataset.cost,'Licencia',renderLicenses)));
+}
+
+/* ============================================================
+   2. BIENES, EQUIPAMIENTO Y SUMINISTROS
+   ============================================================ */
+const FURNITURE_ITEMS=[
+ {id:'estanterias2',name:'Estanterías nuevas',icon:'🗄️',cost:8000,rep:0.15,desc:'Mejor exposición de producto.'},
+ {id:'mostrador',name:'Mostrador de atención',icon:'🛎️',cost:12000,rep:0.2,desc:'Atención más profesional a los clientes.'},
+ {id:'iluminacion',name:'Iluminación del local',icon:'💡',cost:6000,rep:0.1,desc:'Un local más luminoso invita a entrar.'},
+ {id:'tpv',name:'Terminal TPV moderno',icon:'💳',cost:9000,rep:0.15,desc:'Cobro más rápido y sin errores.'}
+];
+const TECH_ITEMS=[
+ {id:'ordenador',name:'Equipo informático',icon:'🖥️',cost:15000,dailyIncome:25,desc:'Gestión de pedidos más eficiente.'},
+ {id:'softgestion',name:'Licencia de software de gestión',icon:'🧾',cost:22000,dailyIncome:45,desc:'Menos tiempo perdido, más ventas registradas.'},
+ {id:'servidor',name:'Servidor propio',icon:'🗃️',cost:30000,dailyIncome:60,desc:'Automatiza informes y pedidos a proveedores.'},
+ {id:'automatizacion',name:'Herramientas de automatización',icon:'🤖',cost:40000,dailyIncome:90,desc:'Tareas repetitivas resueltas solas.'}
+];
+const MACHINERY_ITEMS=[
+ {id:'refrigeracion',name:'Refrigeración industrial',icon:'❄️',cost:35000,desc:'Reduce a la mitad las mermas de productos perecederos en Mi Ciudad.'},
+ {id:'cortadora',name:'Herramientas de corte',icon:'🔪',cost:9000,dailyIncome:15,desc:'Mejor aprovechamiento en charcutería.'},
+ {id:'embalaje',name:'Cajas de embalaje',icon:'📦',cost:4000,dailyIncome:8,desc:'Menos roturas y mermas en el transporte.'}
+];
+const UTILITY_ITEMS=[
+ {id:'internet',name:'Internet de alta velocidad',icon:'📶',cost:5000,dailyIncome:20,desc:'Ventas online más rápidas y sin cortes.'}
+];
+function ALL_PASSIVE_ITEMS(){
+ const all={};
+ for(const it of [...TECH_ITEMS,...MACHINERY_ITEMS,...UTILITY_ITEMS])all[it.id]=it;
+ return all;
+}
+function buyOneTimeFromCash(id,cost,kind,rerender){
+ if((S.bys.owned||[]).includes(id)){toast('Ya lo tienes.');return;}
+ if(S.cash<cost){toast('🏪 La caja del súper no llega.');return;}
+ S.cash-=cost;
+ S.bys.owned=S.bys.owned||[];S.bys.owned.push(id);
+ logEconomy(kind,`Compra: ${id}`,cost,'Tú');
+ toast('✅ Comprado.');
+ if(rerender)rerender();
+ updateTopbar();save();
+}
+function buyOneTimeFromCashWithBonus(item,list){
+ if((S.bys.owned||[]).includes(item.id)){toast('Ya lo tienes.');return;}
+ if(S.cash<item.cost){toast('🏪 La caja del súper no llega.');return;}
+ S.cash-=item.cost;
+ S.bys.owned=S.bys.owned||[];S.bys.owned.push(item.id);
+ if(item.rep){S.rep=Math.min(5,S.rep+item.rep);}
+ logEconomy('Equipamiento',`Compra: ${item.name}`,item.cost,'Tú');
+ toast(`✅ ${item.name} instalado${item.rep?' · +reputación':''}${item.dailyIncome?' · +ingreso pasivo diario':''}`);
+ renderGoods();updateTopbar();save();
+}
+function renderList(container,items,extraNote){
+ container.innerHTML=items.map(it=>{
+  const owned=(S.bys.owned||[]).includes(it.id);
+  return `<div class="item">
+   <span class="info"><span style="font-size:1.2rem">${it.icon}</span>
+    <span><b>${it.name}</b><span class="desc">${it.desc}${it.dailyIncome?' · +'+fmt$(it.dailyIncome)+'/día':''}</span></span></span>
+   <span class="price">${fmt$(it.cost)} (caja)</span>
+   <button class="btn ${owned?'ghost':'grn'}" data-buygood="${it.id}" ${owned||S.cash<it.cost?'disabled':''}>${owned?'✅ Instalado':'Comprar'}</button>
+  </div>`;
+ }).join('');
+}
+function renderGoods(){
+ renderList($('furnitureList'),FURNITURE_ITEMS);
+ renderList($('techList'),TECH_ITEMS);
+ renderList($('machineryList'),MACHINERY_ITEMS);
+ renderList($('utilityUpgradeList'),UTILITY_ITEMS);
+ $('utilitiesDebt').textContent=fmt$(S.bys.utilitiesDebt||0);
+ document.querySelectorAll('[data-buygood]').forEach(b=>{
+  b.addEventListener('click',()=>{
+   const all=Object.assign({},...[...FURNITURE_ITEMS,...TECH_ITEMS,...MACHINERY_ITEMS,...UTILITY_ITEMS].map(i=>({[i.id]:i})));
+   buyOneTimeFromCashWithBonus(all[b.dataset.buygood]);
+  });
+ });
+}
+
+/* ============================================================
+   3. MARKETING, VISIBILIDAD Y RED
+   ============================================================ */
+const CAMPAIGN_ITEMS=[
+ {id:'folletos',name:'Folletos locales',icon:'📄',cost:400,boost:0.10,days:1},
+ {id:'redes',name:'Campaña en redes sociales',icon:'📱',cost:1200,boost:0.20,days:2},
+ {id:'anuncios',name:'Anuncios pagados',icon:'📢',cost:3000,boost:0.35,days:2},
+ {id:'letrero',name:'Letrero luminoso para el local',icon:'🪧',cost:6000,boost:0.15,days:99999,permanent:true}
+];
+function renderCampaigns(){
+ $('campaignList').innerHTML=CAMPAIGN_ITEMS.map(c=>{
+  const owned=c.permanent&&(S.bys.owned||[]).includes(c.id);
+  return `<div class="item">
+   <span class="info"><span style="font-size:1.2rem">${c.icon}</span>
+    <span><b>${c.name}</b><span class="desc">+${Math.round(c.boost*100)}% clientes ${c.permanent?'· permanente':'durante '+c.days+' día(s) de juego'}</span></span></span>
+   <span class="price">${fmt$(c.cost)} (caja)</span>
+   <button class="btn ${owned?'ghost':'grn'}" data-camp="${c.id}" ${owned||S.cash<c.cost?'disabled':''}>${owned?'✅ Instalado':'Lanzar'}</button>
+  </div>`;
+ }).join('');
+ document.querySelectorAll('[data-camp]').forEach(b=>b.addEventListener('click',()=>launchCampaign(b.dataset.camp)));
+ const active=S.dayBonus&&S.dayBonus.clientes&&S.dayBonus.expires>S.day;
+ $('campaignActive').innerHTML=active
+  ?`<div class="orow"><span>📣 Campaña activa: <b>+${Math.round(S.dayBonus.clientes*100)}%</b> clientes</span><span>hasta el día ${S.dayBonus.expires}</span></div>`
+  :'<p style="font-size:.82rem;color:#8a7f68">No tienes ninguna campaña activa ahora mismo.</p>';
+}
+function launchCampaign(id){
+ const c=CAMPAIGN_ITEMS.find(x=>x.id===id);if(!c)return;
+ if(c.permanent&&(S.bys.owned||[]).includes(id)){toast('Ya lo tienes.');return;}
+ if(S.cash<c.cost){toast('🏪 La caja del súper no llega.');return;}
+ S.cash-=c.cost;
+ if(c.permanent)S.bys.owned.push(id);
+ const current=(S.dayBonus&&S.dayBonus.clientes&&S.dayBonus.expires>S.day)?S.dayBonus:{clientes:0,expires:S.day};
+ S.dayBonus={clientes:Math.max(current.clientes,c.boost),expires:Math.max(current.expires,S.day+c.days)};
+ logEconomy('Marketing',`Campaña: ${c.name}`,c.cost,'Tú');
+ toast(`📣 ${c.name} en marcha: +${Math.round(c.boost*100)}% clientes.`);
+ announceToChat(`📣 ${S.pname} ha lanzado una campaña: ${c.name}.`);
+ renderCampaigns();updateTopbar();save();
+}
+const NETWORKING_ITEMS=[
+ {id:'assoc',name:'Asociación de Comerciantes del Barrio',icon:'🤝',cost:2500,rep:0.3,desc:'Contactos y ferias del barrio.'},
+ {id:'investclub',name:'Club de Inversores de Valencia',icon:'💼',cost:8000,rep:0.5,desc:'Acceso a rondas de inversión más jugosas.'},
+ {id:'sectorevent',name:'Evento anual del sector',icon:'🎪',cost:1500,rep:0.15,desc:'Visibilidad puntual entre otros comerciantes.'}
+];
+function renderNetworking(){
+ $('networkingList').innerHTML=NETWORKING_ITEMS.map(n=>{
+  const owned=(S.bys.networking||[]).includes(n.id);
+  return `<div class="item">
+   <span class="info"><span style="font-size:1.2rem">${n.icon}</span>
+    <span><b>${n.name}</b><span class="desc">${n.desc} · +${n.rep} reputación</span></span></span>
+   <span class="price">${fmt$(n.cost)} (cartera)</span>
+   <button class="btn ${owned?'ghost':'grn'}" data-net="${n.id}" ${owned||S.wallet<n.cost?'disabled':''}>${owned?'✅ Inscrito':'Inscribirse'}</button>
+  </div>`;
+ }).join('');
+ document.querySelectorAll('[data-net]').forEach(b=>b.addEventListener('click',()=>joinNetworking(b.dataset.net)));
+}
+function joinNetworking(id){
+ const n=NETWORKING_ITEMS.find(x=>x.id===id);if(!n)return;
+ if((S.bys.networking||[]).includes(id)){toast('Ya estás inscrito.');return;}
+ if(S.wallet<n.cost){toast('💼 No te llega la cartera.');return;}
+ S.wallet-=n.cost;S.bys.networking.push(id);S.rep=Math.min(5,S.rep+n.rep);
+ logEconomy('Networking',`Inscripción: ${n.name}`,n.cost,'Tú');
+ toast(`🤝 Te has inscrito en ${n.name}. +reputación`);
+ renderNetworking();updateTopbar();save();
+}
+
+/* ============================================================
+   4. BIENESTAR Y ESTILO DE VIDA
+   ============================================================ */
+const WELLNESS_ITEMS=[
+ {id:'vitaminas',name:'Vitaminas',icon:'💊',cost:20,energy:15,mood:5},
+ {id:'gym',name:'Suscripción al gimnasio',icon:'🏋️',cost:180,energy:35,mood:15},
+ {id:'terapia',name:'Sesión de terapia',icon:'🧘',cost:90,energy:20,mood:30}
+];
+function renderWellness(){
+ $('wellnessList').innerHTML=WELLNESS_ITEMS.map(w=>`
+  <div class="item">
+   <span class="info"><span style="font-size:1.2rem">${w.icon}</span>
+    <span><b>${w.name}</b><span class="desc">+${w.energy}⚡ +${w.mood}😊</span></span></span>
+   <span class="price">${fmt$(w.cost)} (cartera)</span>
+   <button class="btn grn" data-well="${w.id}" ${S.wallet<w.cost?'disabled':''}>Comprar</button>
+  </div>`).join('');
+ document.querySelectorAll('[data-well]').forEach(b=>b.addEventListener('click',()=>buyWellness(b.dataset.well)));
+}
+function buyWellness(id){
+ const w=WELLNESS_ITEMS.find(x=>x.id===id);if(!w)return;
+ if(S.wallet<w.cost){toast('💼 No te llega la cartera.');return;}
+ S.wallet-=w.cost;
+ S.energy=Math.min(S.energyMax||100,S.energy+w.energy);
+ S.mood=Math.min(100,S.mood+w.mood);
+ logEconomy('Bienestar',w.name,w.cost,'Tú');
+ toast(`${w.icon} ${w.name}: +${w.energy}⚡ +${w.mood}😊`);
+ renderWellness();updateTopbar();save();
+}
+const LIFESTYLE_ITEMS=[
+ {id:'coche',name:'Vehículo personal',icon:'🚙',cost:25000,rep:0.2,mood:20,oneTime:true},
+ {id:'viaje',name:'Viaje de fin de semana',icon:'✈️',cost:1200,mood:40,energy:30,oneTime:false},
+ {id:'trajeformal',name:'Ropa formal de diseño',icon:'🥼',cost:3500,rep:0.3,oneTime:true},
+ {id:'lujo',name:'Artículos de lujo',icon:'💎',cost:15000,rep:0.4,mood:15,oneTime:true}
+];
+function renderLifestyle(){
+ $('lifestyleList').innerHTML=LIFESTYLE_ITEMS.map(l=>{
+  const owned=l.oneTime&&(S.bys.owned||[]).includes(l.id);
+  return `<div class="item">
+   <span class="info"><span style="font-size:1.2rem">${l.icon}</span>
+    <span><b>${l.name}</b><span class="desc">${l.rep?'+'+l.rep+' reputación permanente ':''}${l.mood?'+'+l.mood+'😊 ':''}${l.energy?'+'+l.energy+'⚡':''}${l.oneTime?' · una sola vez':' · repetible'}</span></span></span>
+   <span class="price">${fmt$(l.cost)} (cartera)</span>
+   <button class="btn ${owned?'ghost':'grn'}" data-life="${l.id}" ${owned||S.wallet<l.cost?'disabled':''}>${owned?'✅ Adquirido':'Comprar'}</button>
+  </div>`;
+ }).join('');
+ document.querySelectorAll('[data-life]').forEach(b=>b.addEventListener('click',()=>buyLifestyle(b.dataset.life)));
+}
+function buyLifestyle(id){
+ const l=LIFESTYLE_ITEMS.find(x=>x.id===id);if(!l)return;
+ if(l.oneTime&&(S.bys.owned||[]).includes(id)){toast('Ya lo tienes.');return;}
+ if(S.wallet<l.cost){toast('💼 No te llega la cartera.');return;}
+ S.wallet-=l.cost;
+ if(l.oneTime)S.bys.owned.push(id);
+ if(l.rep)S.rep=Math.min(5,S.rep+l.rep);
+ if(l.mood)S.mood=Math.min(100,S.mood+l.mood);
+ if(l.energy)S.energy=Math.min(S.energyMax||100,S.energy+l.energy);
+ logEconomy('Ocio',l.name,l.cost,'Tú');
+ toast(`${l.icon} ${l.name} adquirido.`);
+ renderLifestyle();updateTopbar();save();
+}
+
+/* ============================================================
+   PROCESADO DIARIO
+   ============================================================ */
+function processDailyFinancials(){
+ const now=Date.now();
+ if(!S.bys.lastCheckedAt){S.bys.lastCheckedAt=now;save();return;}
+ const elapsedDays=(now-S.bys.lastCheckedAt)/(24*3600*1000);
+ if(elapsedDays<=0.0007)return;
+ // Préstamos (con cuota diaria)
+ for(const loan of (S.bys.loans||[]).slice()){
+  if(loan.dailyPayment>0){
+   const pay=Math.min(loan.balance,loan.dailyPayment*elapsedDays);
+   loan.balance=r2(loan.balance-pay);S.wallet-=pay;
+   if(loan.balance<=0.5){
+    feed(`✅ Préstamo "${loan.name}" saldado por completo.`,'good');
+    S.bys.loans=S.bys.loans.filter(l=>l!==loan);
+   }
+  }
+ }
+ // Servicios financieros contratados (importados del Centro Comercial)
+ const finIncome=processFinancialServicesIncome(elapsedDays);
+ if(finIncome>0)S.wallet+=finIncome;
+ // Seguros
+ let premium=0;
+ if(S.bys.insurances.medical){
+  premium+=INSURANCE_PRODUCTS.medical.dailyPremium*elapsedDays;
+  S.energy=Math.min(S.energyMax||100,S.energy+2*elapsedDays);
+  S.mood=Math.min(100,S.mood+2*elapsedDays);
+ }
+ if(S.bys.insurances.business){
+  premium+=INSURANCE_PRODUCTS.business.dailyPremium*elapsedDays;
+  if(S.cash<0){feed('🏪 El seguro de local ha cubierto tu caja en números rojos.','good');S.cash=0;}
+ }
+ if(S.bys.insurances.liability){
+  premium+=INSURANCE_PRODUCTS.liability.dailyPremium*elapsedDays;
+  S.rep=Math.min(5,S.rep+0.02*elapsedDays);
+ }
+ if(premium>0)S.wallet-=premium;
+ // Suministros básicos
+ const utilityCost=25*elapsedDays;
+ if(S.cash>=utilityCost){S.cash-=utilityCost;}
+ else{S.bys.utilitiesDebt=(S.bys.utilitiesDebt||0)+(utilityCost-Math.max(0,S.cash));S.cash=Math.min(S.cash,0);}
+ if((S.bys.utilitiesDebt||0)>1500){S.mood=Math.max(0,S.mood-1);}
+ // Ingresos pasivos de tecnología/maquinaria/suministros
+ const passiveCatalog=ALL_PASSIVE_ITEMS();
+ let passiveIncome=0;
+ for(const id of (S.bys.owned||[])){if(passiveCatalog[id])passiveIncome+=passiveCatalog[id].dailyIncome*elapsedDays;}
+ if(passiveIncome>0){S.wallet+=passiveIncome;}
+ // Auditoría fiscal
+ const riesgoBase=S.cash<0?0.04:0.01;
+ const riesgo=S.bys.insurances.business?riesgoBase*0.4:riesgoBase;
+ if(Math.random()<riesgo*elapsedDays){
+  const multa=Math.round(800+Math.random()*2500);
+  S.cash-=multa;
+  feed(`🧾 Auditoría fiscal: Hacienda te ha puesto una multa de ${fmt$(multa)}.`,'bad');
+  toast(`🧾 ¡Auditoría fiscal! Multa de ${fmt$(multa)}.`);
+  announceToChat(`🧾 ${S.pname} ha recibido una auditoría fiscal.`);
+ }
+ S.bys.lastCheckedAt=now;
+ save();updateTopbar();
+}
+
+/* ============ RENDER GENERAL ============ */
+function renderFinance(){renderFinancialServices();renderLoanCatalog();renderLoanActive();renderInsurance();renderInvestments();renderLicenses();}
+function renderMarketing(){renderCampaigns();renderNetworking();}
+function renderWellbeing(){renderWellness();renderLifestyle();}
+function renderAll(){
+ updateTopbar();
+ renderFinance();
+ renderGoods();
+ renderMarketing();
+ renderWellbeing();
+}
+
+/* ============ FIREBASE (best-effort, solo para anuncios al chat) ============ */
+function connectFirebase(){
+ if(!FB_OK)return;
+ try{firebase.initializeApp(FIREBASE_CONFIG);}catch(e){}
+ firebase.auth().signInAnonymously().then(cr=>{
+  FB.uid=cr.user.uid;FB.db=firebase.firestore();
+ }).catch(()=>{});
+}
+
+/* ============ ARRANQUE ============ */
+if(!load()){
+ alert('No se encontró ninguna partida guardada. Empieza o continúa una partida desde Mi Ciudad.');
+ window.location.href='mi_ciudad.html';
+}else{
+ renderInvestOptions();
+ processDailyFinancials();
+ renderAll();
+ connectFirebase();
+}
+$('investBtn').addEventListener('click',buyInvestment);
+</script>
+</body>
+</html>
