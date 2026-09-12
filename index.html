@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi Ciudad: Clases y Oportunidades — Inicio</title>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow+Semi+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+/* ===== ESTILOS COMPLETOS (copiados de mi_ciudad.html) ===== */
+:root{--bg:#0f2f22;--paper:#fdf7ea;--paper2:#f2e7cd;--ink:#26221c;--red:#d93a2b;--red2:#a92417;
+--yellow:#ffcf3f;--green:#3ecf6f;--line:#e2d4b2;--shadow:#1e1a17}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Barlow Semi Condensed',sans-serif;color:var(--ink);background:
+ radial-gradient(1200px 500px at 50% -10%,#1b4a35 0%,transparent 60%),
+ repeating-linear-gradient(45deg,rgba(255,255,255,.015) 0 2px,transparent 2px 26px),var(--bg);
+ min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.num{font-variant-numeric:tabular-nums}button{font-family:inherit;cursor:pointer;user-select:none}
+.btn{border:2px solid var(--shadow);border-radius:8px;padding:6px 12px;font-weight:700;font-size:.88rem;
+ box-shadow:0 3px 0 var(--shadow);transition:transform .1s;background:var(--yellow)}
+.btn:hover{transform:translateY(-2px)}.btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--shadow)}
+.btn.red{background:var(--red);color:#fff}.btn.ghost{background:#fff}.btn.grn{background:var(--green);color:#fff}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.mcard{position:relative;z-index:10001;background:var(--paper);border:3px solid var(--shadow);border-radius:14px;max-width:820px;width:100%;padding:22px;
+ box-shadow:0 10px 0 var(--shadow),0 24px 50px rgba(0,0,0,.5);max-height:92vh;overflow-y:auto}
+.mcard h2{font-family:'Bungee';color:var(--red);font-size:1.35rem;margin-bottom:8px}
+.mcard p{margin-bottom:8px;line-height:1.35}
+.mcard input,.mcard select{width:100%;border:2px solid var(--shadow);border-radius:8px;padding:8px;font:inherit;margin:4px 0 10px;background:#fff}
+.steps{background:#fff;border:2px dashed var(--line);border-radius:10px;padding:10px 12px;font-size:.9rem;margin:8px 0}
+.steps li{margin:4px 0 4px 18px}
+.sect{background:#fff;border:2px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+.sect h4{font-family:'Bungee';font-size:.9rem;color:var(--red);margin-bottom:6px}
+.rowflex{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.start-budget{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--yellow);border:2px solid var(--shadow);border-radius:10px;padding:9px 12px;margin:10px 0 6px;font-weight:700}
+.start-budget strong{font-family:'Bungee';font-size:1.15rem}
+.start-budget.cash{background:#ffe28a;margin-top:0}
+.start-budget .sb-icon{font-size:1.15rem;margin-right:6px}
+.start-count{font-size:.85rem;color:#6b6250;margin:-3px 0 8px}
+.sumrow{display:flex;justify-content:space-between;padding:5px 4px;border-bottom:1px dashed var(--line);font-weight:600;font-size:.94rem}
+.sumrow.total{border-bottom:none;border-top:2px solid var(--shadow);margin-top:4px;font-family:'Bungee'}
+.sumrow .pos{color:#1e9e50}.sumrow .neg{color:var(--red)}
+.modebtn{display:flex;flex-direction:column;gap:4px;align-items:center;flex:1;padding:14px 8px;font-size:1rem}
+.modebtn small{font-weight:400;font-size:.75rem;opacity:.8}
+.valencia-message{background:#fff3cd;border:2px dashed #e6b31e;border-radius:9px;padding:9px 11px;margin:0 0 10px;font-size:.9rem;line-height:1.3;color:#5c4821;font-weight:600}
+.origin-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:8px 0 10px}
+.origin-card{background:#fff;border:2px solid var(--line);border-radius:10px;padding:8px;text-align:left;cursor:pointer;box-shadow:0 3px 0 rgba(0,0,0,.15);transition:.12s;min-width:0;width:100%;box-sizing:border-box;overflow:hidden}
+.origin-card:hover{transform:translateY(-2px);border-color:#e6b31e}
+.origin-card.sel{background:#eaffef;border-color:var(--green);box-shadow:0 4px 0 #219653}
+.origin-card h3{font-family:'Bungee';font-size:.78rem;color:var(--red);margin-bottom:4px;line-height:1.12;overflow-wrap:anywhere;word-break:normal}
+.origin-card p{font-size:.72rem;line-height:1.2;color:#5c5443;margin:3px 0;overflow-wrap:anywhere;word-break:normal}
+.origin-card .origin-challenge{color:#6b6250;font-size:.7rem}
+.origin-card .origin-money{font-weight:700;color:#1e9e50;font-size:.82rem}
+.origin-detail{background:#fff3cd;border:2px dashed #e6b31e;border-radius:9px;padding:8px 10px;font-size:.82rem;line-height:1.3;margin-bottom:8px}
+.origin-badge{display:inline-block;background:#eaffef;border:1px solid var(--green);border-radius:6px;padding:2px 7px;font-size:.75rem;font-weight:700;color:#176d36;margin-left:5px}
+.family-group{margin:8px 0 10px}
+.family-block{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;background:#fff;border:2px solid var(--line);border-radius:10px;padding:10px 12px;text-align:left;cursor:pointer;box-shadow:0 3px 0 rgba(0,0,0,.14);transition:.12s;box-sizing:border-box}
+.family-block:hover{transform:translateY(-1px);border-color:#e6b31e;background:#fffdf3}
+.family-block strong{font-family:'Bungee';font-size:.78rem;color:var(--red);line-height:1.15}
+.family-block small{display:block;color:#6b6250;font-size:.72rem;margin-top:3px}
+.family-arrow{font-size:1.3rem;color:#c69200;flex:0 0 auto}
+.family-items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.start-est{display:flex;align-items:center;gap:7px;text-align:left;background:#fff;border:2px solid var(--line);border-radius:9px;padding:7px;min-height:62px;min-width:0;width:100%;box-sizing:border-box;box-shadow:0 2px 0 rgba(0,0,0,.12);overflow:hidden}
+.start-est:hover{border-color:#e6b31e;transform:translateY(-1px)}
+.start-est.sel{background:#eaffef;border-color:var(--green);box-shadow:0 3px 0 #219653}
+.start-est:disabled{opacity:.48;cursor:not-allowed;transform:none}
+.start-est .eemoji{font-size:1.35rem;flex:0 0 auto}
+.start-est>span:nth-child(2){min-width:0;flex:1 1 auto;overflow:hidden}
+.start-est .ename{font-weight:700;line-height:1.12;font-size:.8rem;display:block;overflow-wrap:anywhere;word-break:normal}
+.start-est .emeta{display:block;color:#8a7f68;font-size:.68rem;margin-top:3px;line-height:1.15;overflow-wrap:anywhere;word-break:normal}
+.start-est .echeck{margin-left:auto;font-size:1rem;flex:0 0 auto}
+.toast{background:var(--shadow);color:#fff;padding:9px 18px;border-radius:10px;border:2px solid var(--yellow);font-weight:600;animation:pop .25s;max-width:92vw;text-align:center;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999}
+@keyframes pop{from{transform:scale(.7);opacity:0}}
+.modal{position:fixed;inset:0;z-index:10000!important;background:rgba(4,16,10,.78);display:none;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(2px)}
+.modal.open{display:flex}
+.modal .mcard{max-width:820px}
+.video-intro{position:fixed;inset:0;z-index:11000;background:rgba(4,16,10,.94);display:flex;align-items:center;justify-content:center;padding:14px}
+.video-intro-card{width:min(960px,100%);background:var(--paper);border:3px solid var(--shadow);border-radius:14px;padding:14px;box-shadow:0 10px 0 var(--shadow),0 24px 50px rgba(0,0,0,.5)}
+.video-intro-card h1{font-family:'Bungee';color:var(--red);font-size:clamp(1.1rem,3vw,1.7rem);margin:0 0 10px}
+.video-intro-player{display:block;width:100%;max-height:70vh;background:#000;border:2px solid var(--shadow);border-radius:8px;object-fit:contain}
+.video-intro-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+@media(max-width:560px){
+ .video-intro{padding:0;background:#000}
+ .video-intro-card{position:relative;width:100vw;height:100dvh;padding:0;border:0;border-radius:0;box-shadow:none;background:#000;overflow:hidden}
+ .video-intro-card h1{position:absolute;z-index:1;top:env(safe-area-inset-top, 0px);left:16px;margin-top:12px;color:#fff;text-shadow:0 2px 4px #000}
+ .video-intro-player{width:100vw;height:100dvh;max-height:none;aspect-ratio:9 / 16;border:0;border-radius:0;object-fit:cover}
+ .video-intro-actions{position:absolute;z-index:1;right:16px;bottom:calc(16px + env(safe-area-inset-bottom, 0px));left:16px;flex-direction:column-reverse;margin:0}
+ .video-intro-actions .btn{width:100%;background:rgba(253,247,234,.94)}
+ .video-intro-actions .btn.grn{background:rgba(62,207,111,.94)}
+}
+.chip{background:#12382a;border:2px solid #1d5a41;color:#e9f5ec;border-radius:10px;padding:5px 11px;font-size:.92rem;
+ display:flex;align-items:center;gap:6px;box-shadow:0 3px 0 rgba(0,0,0,.3);width:fit-content;margin:8px auto}
+.chip b{color:#fff}
+.emptybox{padding:28px;text-align:center;color:#8a7f68;background:#fff;border:2px dashed var(--line);border-radius:12px}
+.saved-row{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px dashed var(--line);padding:8px 0;flex-wrap:wrap}
+.saved-row:last-child{border-bottom:0}
+.saved-actions{display:flex;gap:6px;align-items:center}
+.orow{display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:1px dashed var(--line);padding:6px 0;font-size:.9rem;flex-wrap:wrap}
+.orow:last-child{border:none}
+
+/* ==== AVATAR DEL JUGADOR ==== */
+.avatar-row{display:flex;align-items:center;gap:14px;background:#fff;border:2px solid var(--line);border-radius:12px;padding:10px 12px;margin:6px 0 10px}
+.avatar-label{position:relative;display:inline-flex;align-items:center;justify-content:center;width:82px;height:82px;flex:0 0 auto;border:2px dashed var(--shadow);border-radius:50%;cursor:pointer;background:#fff8e1;overflow:hidden;transition:.15s;box-shadow:0 3px 0 rgba(0,0,0,.12)}
+.avatar-label:hover{border-color:#e6b31e;background:#fffdf3;transform:translateY(-1px)}
+.avatar-preview{width:100%;height:100%;object-fit:cover;border-radius:50%;display:none}
+.avatar-preview.show{display:block}
+.avatar-hint{font-size:1.8rem;line-height:1}
+.avatar-info{flex:1;min-width:0}
+.avatar-info b{display:block;font-size:.92rem;color:var(--ink)}
+.avatar-info small{display:block;font-size:.74rem;color:#8a7f68;margin-top:3px;line-height:1.25}
+.avatar-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.avatar-actions .btn{padding:4px 9px;font-size:.78rem}
+
+/* ==== BADGES Y BUSCADOR DE PARTIDAS ==== */
+.save-source{display:inline-block;font-size:.66rem;font-weight:700;border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:middle;letter-spacing:.02em}
+.save-source.local{background:#e2d4b2;color:#5c4821}
+.save-source.firebase{background:#d4eaff;color:#0a4a8f;border:1px solid #7ab8f5}
+.save-search{display:flex;gap:6px;margin:6px 0 10px;flex-wrap:wrap;align-items:center}
+.save-search input{flex:1 1 180px;min-width:140px;margin:0}
+.save-info{font-size:.78rem;color:#6b6250;background:#f2e7cd;border:1px dashed var(--line);border-radius:8px;padding:6px 9px;margin-bottom:8px}
+.save-loading{text-align:center;color:#8a7f68;font-size:.85rem;padding:10px}
+
+@media(max-width:700px){.origin-list{grid-template-columns:1fr}.family-items{grid-template-columns:1fr}}
+@media(max-width:560px){.start-list{grid-template-columns:1fr}.mcard{padding:16px}.avatar-row{flex-direction:column;text-align:center}.avatar-info{text-align:center}.avatar-actions{justify-content:center}}
+</style>
+</head>
+<body>
+
+<!-- ===== INTRODUCCIÓN EN VIDEO ===== -->
+<div class="video-intro" id="video-intro" role="dialog" aria-modal="true" aria-labelledby="videoIntroTitle">
+  <div class="video-intro-card">
+    <video id="presentationVideo" class="video-intro-player" controls autoplay muted playsinline preload="auto">
+      <source src="video/presentacion.mp4" type="video/mp4">
+      Tu navegador no puede reproducir este video.
+    </video>
+    <div class="video-intro-actions">
+      <button class="btn ghost" id="btnSkipVideo" type="button">Saltar presentación</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL DE INTRODUCCIÓN ===== -->
+<div class="modal open" id="modal-intro">
+  <div class="mcard">
+    <!-- Imagen de presentación en cabecera (sustituye al título "MI CIUDAD") -->
+    <img src="imagenes/cabecera.png" alt="Mi Ciudad" style="width:100%;height:auto;display:block;margin:0 auto 15px auto;border-radius:8px;">
+    <p id="valenciaMessage" class="valencia-message"></p>
+    <p id="introText">Tu partida comienza con una clase social, un capital y unas reglas distintas. Elige tu origen y construye tu camino mediante artículos, establecimientos, trabajos, economía e inversiones.</p>
+    <ol class="steps">
+      <li>🎭 <b>Tu clase marca el reto</b>: cada origen cambia tu capital, energía, obligaciones, impuestos y oportunidades.</li>
+      <li>🛒 <b>Artículos y comercio</b>: compra productos, fija precios, vende, negocia lotes y desarrolla tu actividad económica.</li>
+      <li>💼 <b>Trabajo y patrimonio</b>: consigue empleos, compra establecimientos, terrenos y edificios para ampliar tus ingresos.</li>
+      <li>💶 <b>Economía e inversiones</b>: administra cartera y caja, paga gastos, salarios, alquileres, impuestos y préstamos, y decide dónde invertir.</li>
+      <li>🏘️ <b>Vida de barrio</b>: relaciónate con vecinos y jugadores, participa en eventos y transforma tu posición social en nuevas oportunidades.</li>
+    </ol>
+
+    <!-- ==== AVATAR DEL JUGADOR ==== -->
+    <label style="font-weight:700;font-size:.85rem">🖼️ Foto de perfil (opcional):</label>
+    <div class="avatar-row">
+      <label for="playerAvatar" class="avatar-label" title="Subir imagen">
+        <img id="avatarPreview" class="avatar-preview" alt="">
+        <span class="avatar-hint" id="avatarHint">📷</span>
+      </label>
+      <div class="avatar-info">
+        <b>Tu avatar</b>
+        <small>Sube una imagen desde tu ordenador. Se guardará en este navegador y se sincronizará con la sala online.</small>
+        <div class="avatar-actions">
+          <button type="button" class="btn" id="btnPickAvatar">📁 Elegir imagen</button>
+          <button type="button" class="btn red" id="btnRemoveAvatar" style="display:none">🗑️ Quitar</button>
+        </div>
+      </div>
+      <input type="file" id="playerAvatar" accept="image/*" style="display:none">
+    </div>
+
+    <label style="font-weight:700;font-size:.85rem">Tu nombre/alias:</label>
+    <input id="introName" maxlength="16" value="Alex">
+    <label for="introCommunity" style="font-weight:700;font-size:.85rem">Elige la comunidad autónoma donde residir:</label>
+    <select id="introCommunity">
+      <option value="comunidad-valenciana">Comunidad Valenciana</option>
+      <option value="madrid" disabled>Madrid (próximamente)</option>
+      <option value="andalucia" disabled>Comunidad de Andalucía (próximamente)</option>
+      <option value="catalunya" disabled>Catalunya (próximamente)</option>
+    </select>
+    <label style="font-weight:700;font-size:.85rem">HISTORIAL INICIAL</label>
+    <div id="originList" class="origin-list"></div>
+    <div id="originDetail" class="origin-detail"></div>
+
+    <!-- ==== PRESUPUESTO INICIAL (DINÁMICO) ==== -->
+    <div class="start-budget">
+      <span><span class="sb-icon">💼</span>Presupuesto inicial</span>
+      <strong id="startBudget">€1.500.000,00</strong>
+    </div>
+
+    <!-- ==== CAJA DEL NEGOCIO (DINÁMICO) ==== -->
+    <div class="start-budget cash">
+      <span><span class="sb-icon">💰</span>Caja del negocio</span>
+      <strong id="startCash">€500.000,00</strong>
+    </div>
+
+    <label style="font-weight:700;font-size:.85rem;margin-top:10px;display:block">MODO DE JUEGO</label>
+    <div class="rowflex" style="margin:6px 0 10px">
+      <button class="btn grn modebtn" id="btnOffline">🤖 Continuar ultima partida contra la CPU<small>Sin conexión</small></button>
+      <button class="btn modebtn" id="btnOnline">🌐 Modo multijugador masivo<small>Juega con otros jugadores en línea</small></button>
+      <button class="btn red modebtn" id="btnContinueGame">📂 Partidas guardadas<small>Continuar una partida</small></button>
+    </div>
+    <p style="font-size:.78rem;color:#8a7f68" id="fbNote"></p>
+    <button class="btn ghost" id="btnFriendsIntro" style="width:100%;margin-top:6px">👥 Avisar a mis amigos para jugar</button>
+    <!-- Sección API Gemini -->
+    <div style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+      <label style="font-weight:700;font-size:.85rem">🔑 API de Google Gemini</label>
+      <div class="rowflex" style="margin-top:6px">
+        <button class="btn" id="btnTestGeminiKey" style="flex-shrink:0">Probar conexión</button>
+        <span id="geminiKeyStatus" style="font-size:.82rem;font-weight:600"></span>
+      </div>
+      <div id="geminiTestResult" style="font-size:.82rem;font-weight:600;margin-top:6px;"></div>
+      <p style="font-size:.7rem;color:#8a7f68;margin-top:4px">La clave de Gemini se usará en el chat de la plaza y en eventos generados por IA.</p>
+      <p style="font-size:.65rem;color:#8a7f68;margin-top:2px;font-style:italic">Puedes añadir la conexión con la IA</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL DE PARTIDAS GUARDADAS ===== -->
+<div class="modal" id="modal-saved-games">
+  <div class="mcard">
+    <div id="savedGamesCard"></div>
+  </div>
+</div>
+
+<!-- ===== MODAL DE AMIGOS ===== -->
+<div class="modal" id="modal-friends">
+  <div class="mcard">
+    <h2>👥 Amigos</h2>
+    <p style="font-size:.85rem;color:#6b6250">Guarda a tus amigos para avisarles por WhatsApp cuando quieras jugar online.</p>
+    <div class="sect"><h4>➕ Añadir amigo</h4>
+      <div class="rowflex">
+        <input id="friendName" placeholder="Nombre" style="flex:1;min-width:100px">
+        <input id="friendPhone" placeholder="Móvil (con prefijo, ej: +34600...)" style="flex:1;min-width:160px">
+      </div>
+      <button class="btn" id="btnAddFriend" style="width:100%;margin-top:6px">➕ Guardar amigo</button>
+    </div>
+    <div class="sect"><h4>📇 Mi lista de amigos</h4><div id="friendsList" class="emptybox">Aún no has añadido amigos.</div></div>
+    <div style="text-align:right;margin-top:8px"><button class="btn ghost" onclick="document.getElementById('modal-friends').classList.remove('open')">Cerrar ✖</button></div>
+  </div>
+</div>
+
+<!-- ===== TOASTS ===== -->
+<div id="toasts"></div>
+
+<script>
+'use strict';
+// ============ HELPERS ============
+const $=id=>document.getElementById(id);
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+const fmt$=n=>'€'+(Number(n)||0).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+// ============ INTRODUCCIÓN EN VIDEO ============
+const videoIntro = $('video-intro');
+const presentationVideo = $('presentationVideo');
+function closeVideoIntro() {
+  if (!videoIntro) return;
+  presentationVideo?.pause();
+  videoIntro.remove();
+}
+$('btnSkipVideo')?.addEventListener('click', closeVideoIntro);
+presentationVideo?.addEventListener('ended', closeVideoIntro);
+
+// ============ AVATAR DEL JUGADOR ============
+const AVATAR_KEY = 'stPlayerAvatarV1';
+let avatarDataUrl = '';
+
+function loadAvatarFromStorage() {
+  try { return localStorage.getItem(AVATAR_KEY) || ''; } catch(e) { return ''; }
+}
+function saveAvatarToStorage(dataUrl) {
+  try {
+    if (dataUrl) localStorage.setItem(AVATAR_KEY, dataUrl);
+    else localStorage.removeItem(AVATAR_KEY);
+    return true;
+  } catch (e) {
+    console.warn('No se pudo guardar el avatar:', e);
+    return false;
+  }
+}
+function updateAvatarUI() {
+  const img = $('avatarPreview');
+  const hint = $('avatarHint');
+  const removeBtn = $('btnRemoveAvatar');
+  if (!img || !hint) return;
+  if (avatarDataUrl) {
+    img.src = avatarDataUrl;
+    img.classList.add('show');
+    hint.style.display = 'none';
+    if (removeBtn) removeBtn.style.display = '';
+  } else {
+    img.removeAttribute('src');
+    img.classList.remove('show');
+    hint.style.display = '';
+    if (removeBtn) removeBtn.style.display = 'none';
+  }
+}
+function resizeImageFile(file, maxSize = 220, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) { reject(new Error('El archivo no es una imagen.')); return; }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
+    reader.onload = e => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Imagen no válida.'));
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+        else { w = Math.round(w * maxSize / h); h = maxSize; }
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        try {
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        } catch (err) { reject(err); }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+$('btnPickAvatar').addEventListener('click', () => $('playerAvatar').click());
+$('playerAvatar').addEventListener('change', async (event) => {
+  const file = event.target.files?.[0];
+  event.target.value = '';
+  if (!file) return;
+  try {
+    const dataUrl = await resizeImageFile(file);
+    avatarDataUrl = dataUrl;
+    if (!saveAvatarToStorage(dataUrl)) {
+      toast('⚠️ La imagen es demasiado grande para guardarla en este navegador.');
+    } else {
+      toast('✅ Foto de perfil actualizada.');
+    }
+    updateAvatarUI();
+  } catch (err) {
+    toast('❌ ' + (err.message || 'No se pudo procesar la imagen.'));
+  }
+});
+$('btnRemoveAvatar').addEventListener('click', () => {
+  avatarDataUrl = '';
+  saveAvatarToStorage('');
+  updateAvatarUI();
+  toast('🗑️ Foto de perfil eliminada.');
+});
+
+// ============ GEMINI API KEY ============
+const LS_API_KEY = 'geminiApiKey';
+const CLAVE_CIFRADO = 'CursoIA-HTML-2026';
+const API_KEY_INICIAL_CIFRADA = 'AiRcMg1xE2N+HwAienwGbXIzAyI0WQx0Tww+LDsUcVJdRzEeSxJfEzZ/Cmw7CkofQlFxNBI=';
+
+function cifrarTexto(texto) {
+  if (!texto) return '';
+  let combinado = '';
+  for (let i = 0; i < texto.length; i++) {
+    combinado += String.fromCharCode(texto.charCodeAt(i) ^ CLAVE_CIFRADO.charCodeAt(i % CLAVE_CIFRADO.length));
+  }
+  return btoa(unescape(encodeURIComponent(combinado)));
+}
+
+function descifrarTexto(cifrado) {
+  if (!cifrado) return '';
+  try {
+    const combinado = decodeURIComponent(escape(atob(cifrado)));
+    let texto = '';
+    for (let i = 0; i < combinado.length; i++) {
+      texto += String.fromCharCode(combinado.charCodeAt(i) ^ CLAVE_CIFRADO.charCodeAt(i % CLAVE_CIFRADO.length));
+    }
+    return texto;
+  } catch (error) { return ''; }
+}
+
+function pareceApiKeyValida(texto) { return typeof texto === 'string' && texto.trim().length > 10; }
+
+function obtenerApiKey() {
+  const guardado = localStorage.getItem(LS_API_KEY);
+  if (guardado) {
+    const descifrado = descifrarTexto(guardado);
+    if (pareceApiKeyValida(descifrado)) return descifrado;
+    if (pareceApiKeyValida(guardado)) {
+      localStorage.setItem(LS_API_KEY, cifrarTexto(guardado));
+      return guardado;
+    }
+  }
+  localStorage.setItem(LS_API_KEY, API_KEY_INICIAL_CIFRADA);
+  return descifrarTexto(API_KEY_INICIAL_CIFRADA);
+}
+
+const MODELOS_PREFERIDOS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
+const MODEL_TIMEOUT_MS = 30000;
+let modelosGeminiDisponibles = [];
+let modelosGeminiClave = '';
+
+function esModeloGenerativo(modelo) {
+  const nombre = `${modelo.name || ''} ${modelo.baseModelId || ''} ${modelo.displayName || ''}`.toLowerCase();
+  const soportaContenido = (modelo.supportedGenerationMethods || []).includes('generateContent');
+  return soportaContenido && nombre.includes('gemini') && !/(tts|embedding|image|live|audio)/.test(nombre);
+}
+
+async function listarModelosGemini(apiKey) {
+  if (modelosGeminiClave === apiKey && modelosGeminiDisponibles.length) return modelosGeminiDisponibles;
+  const respuesta = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000&key=${encodeURIComponent(apiKey)}`);
+  const datos = await respuesta.json();
+  if (!respuesta.ok) throw new Error(datos.error?.message || `HTTP ${respuesta.status}`);
+  const disponibles = (datos.models || [])
+    .filter(esModeloGenerativo)
+    .map(modelo => modelo.baseModelId || String(modelo.name || '').replace(/^models\//, ''))
+    .filter(Boolean);
+  const ordenados = [
+    ...MODELOS_PREFERIDOS.filter(modelo => disponibles.includes(modelo)),
+    ...disponibles.filter(modelo => !MODELOS_PREFERIDOS.includes(modelo))
+  ];
+  if (!ordenados.length) throw new Error('La clave no tiene modelos Gemini compatibles con generateContent.');
+  modelosGeminiClave = apiKey;
+  modelosGeminiDisponibles = ordenados.slice(0, 6);
+  return modelosGeminiDisponibles;
+}
+
+async function fetchGeminiWithModel(apiKey, model, prompt, opciones = {}) {
+  const { maxOutputTokens = 260, sinThinking = true } = opciones;
+  const controlador = new AbortController();
+  const temporizador = setTimeout(() => controlador.abort(), MODEL_TIMEOUT_MS);
+  const body = {
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 0.9, maxOutputTokens }
+  };
+  if (sinThinking) body.generationConfig.thinkingConfig = { thinkingBudget: 0 };
+  try {
+    const respuesta = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controlador.signal
+    });
+    const datos = await respuesta.json();
+    if (!respuesta.ok) {
+      const mensaje = datos.error?.message || `HTTP ${respuesta.status}`;
+      if (sinThinking && /invalid argument|thinking|unknown field/i.test(mensaje)) {
+        return fetchGeminiWithModel(apiKey, model, prompt, { maxOutputTokens, sinThinking: false });
+      }
+      const error = new Error(`${model}: ${mensaje}`);
+      error.status = respuesta.status;
+      throw error;
+    }
+    const texto = datos.candidates?.[0]?.content?.parts?.map(parte => parte.text || '').join('').trim();
+    if (!texto) throw new Error(`${model}: la respuesta no incluyó texto.`);
+    return { texto, model };
+  } catch (error) {
+    if (error?.name === 'AbortError') throw new Error(`Tiempo de espera agotado con ${model}.`);
+    throw error;
+  } finally {
+    clearTimeout(temporizador);
+  }
+}
+
+async function solicitarTextoGemini(apiKey, prompt, opciones = {}) {
+  const modelos = await listarModelosGemini(apiKey);
+  let ultimoError = null;
+  for (const model of modelos) {
+    try {
+      return await fetchGeminiWithModel(apiKey, model, prompt, opciones);
+    } catch (error) {
+      ultimoError = error;
+    }
+  }
+  throw ultimoError || new Error('No se encontró un modelo disponible para atender la solicitud.');
+}
+
+async function probarConexionGemini() {
+  const statusEl = document.getElementById('geminiKeyStatus');
+  const resultEl = document.getElementById('geminiTestResult');
+  const key = obtenerApiKey();
+  if (!key || !pareceApiKeyValida(key)) {
+    statusEl.textContent = '❌ No hay una clave de Gemini válida. Introduce una en el campo (si lo deseas) o usa la que ya tienes guardada.';
+    statusEl.style.color = '#d93a2b';
+    resultEl.textContent = '';
+    return;
+  }
+  statusEl.textContent = '⏳ Comprobando...';
+  statusEl.style.color = '#ffcf3f';
+  resultEl.textContent = '';
+  try {
+    const { texto, model } = await solicitarTextoGemini(key, 'Responde únicamente: OK');
+    if (!/^ok[.!\s]*$/i.test(texto)) throw new Error('La prueba recibió una respuesta no esperada.');
+    statusEl.textContent = '✅ Conectado';
+    statusEl.style.color = '#3ecf6f';
+    resultEl.textContent = `Modelo activo: ${model}`;
+    resultEl.style.color = '#3ecf6f';
+    localStorage.setItem(LS_API_KEY, cifrarTexto(key));
+  } catch (error) {
+    statusEl.textContent = '❌ Error';
+    statusEl.style.color = '#d93a2b';
+    resultEl.textContent = `Error: ${error.message || 'clave no válida o sin cuota.'}`;
+    resultEl.style.color = '#d93a2b';
+  }
+}
+
+// ============ ORÍGENES (6 clases) ============
+const ORIGINS = {
+  worker: { id:'worker', icon:'📦', name:'Clase trabajadora', title:'El Soñador del Barrio', wallet:2500, cash:5000, rep:3, energyMax:100, loan:10000, dailyLoan:240, requiredShifts:2, tax:0, desc:'Turnos dobles obligatorios, préstamo bancario y crecimiento progresivo con microcréditos locales.' },
+  lottery: { id:'lottery', icon:'🎟️', name:'Ganador de lotería', title:'El Gran Inversor Sin Experiencia', wallet:1500000, cash:500000, rep:1.5, energyMax:100, loan:0, dailyLoan:0, requiredShifts:0, tax:4200, desc:'Gran capacidad de inversión, pero con impuestos patrimoniales, inspecciones y competidores más agresivos.' },
+  vulnerable: { id:'vulnerable', icon:'✉️', name:'Clase vulnerable', title:'Lucha por Sobrevivir', wallet:150, cash:500, rep:2.5, energyMax:70, loan:0, dailyLoan:0, requiredShifts:0, tax:0, desc:'Energía máxima reducida, gastos difíciles de cubrir y acceso gradual a ayudas y microcréditos.' },
+  digital: { id:'digital', icon:'💻', name:'Emprendedor digital', title:'El Visionario Tecnológico', wallet:800000, cash:200000, rep:2, energyMax:100, loan:0, dailyLoan:0, requiredShifts:0, tax:2000, desc:'Inversiones en cripto y negocios online, con gran flujo de caja pero impuestos por plusvalías y riesgo de burbujas.' },
+  heir: { id:'heir', icon:'🏛️', name:'Heredero de negocio familiar', title:'El Guardián del Legado', wallet:300000, cash:80000, rep:4, energyMax:90, loan:50000, dailyLoan:1200, requiredShifts:1, tax:1500, desc:'Clientela fiel y reputación heredada, pero deudas con el banco y la obligación de mantener el negocio familiar a flote.' },
+  immigrant: { id:'immigrant', icon:'🌍', name:'Inmigrante emprendedor', title:'El Luchador Incansable', wallet:10000, cash:5000, rep:2.5, energyMax:100, loan:0, dailyLoan:0, requiredShifts:0, tax:0, desc:'Subvenciones y ayudas al emprendimiento, pero con barreras de idioma, redes limitadas y un capital muy ajustado para empezar.' }
+};
+
+const START_ESTABLISHMENTS = [
+  {id:'est01',name:'Mercado Central',emoji:'🏛️',type:'Mercado',cost:180000,lat:39.4736,lng:-0.3788},
+  {id:'est02',name:'Mercado de Ruzafa',emoji:'🏛️',type:'Mercado',cost:150000,lat:39.4611,lng:-0.3757},
+  {id:'est03',name:'Mercado de Campanar',emoji:'🏛️',type:'Mercado',cost:160000,lat:39.4775,lng:-0.3956},
+  {id:'est04',name:'Frutería Ruzafa',emoji:'🍎',type:'Frutería',cost:110000,lat:39.4618,lng:-0.3740},
+  {id:'est05',name:'Panadería del Carmen',emoji:'🥖',type:'Panadería',cost:120000,lat:39.4772,lng:-0.3789},
+  {id:'est06',name:'Carnicería Mercado Central',emoji:'🥩',type:'Carnicería',cost:210000,lat:39.4734,lng:-0.3791},
+  {id:'est07',name:'Pescadería Cabanyal',emoji:'🐟',type:'Pescadería',cost:220000,lat:39.4632,lng:-0.3318},
+  {id:'est08',name:'Lechería Mercado Central',emoji:'🧀',type:'Lácteos',cost:195000,lat:39.4737,lng:-0.3785},
+  {id:'est09',name:'Conservas Mercado Central',emoji:'🥫',type:'Despensa',cost:145000,lat:39.4746,lng:-0.3785},
+  {id:'est10',name:'Congelados del Puerto',emoji:'🧊',type:'Congelados',cost:200000,lat:39.4595,lng:-0.3470},
+  {id:'est11',name:'Charcutería Campanar',emoji:'🥓',type:'Carnicería',cost:150000,lat:39.4778,lng:-0.3950},
+  {id:'est12',name:'Horchatería Santa Catalina',emoji:'🍺',type:'Ocio y chismes',cost:180000,lat:39.47388,lng:-0.37606},
+  {id:'est13',name:'Casa Carmela',emoji:'🍽️',type:'Restaurante',cost:320000,lat:39.4762,lng:-0.3236},
+  {id:'est14',name:'Cafetería Colón',emoji:'☕',type:'Café',cost:160000,lat:39.4671,lng:-0.3699},
+  {id:'est15',name:'Bodega del Carmen',emoji:'🍷',type:'Bebidas',cost:180000,lat:39.4783,lng:-0.3798},
+  {id:'est16',name:'Dulces de Valencia',emoji:'🍫',type:'Dulces',cost:130000,lat:39.4690,lng:-0.3770},
+  {id:'est17',name:'Tapería Ruzafa',emoji:'🍤',type:'Restaurante',cost:280000,lat:39.4615,lng:-0.3750},
+  {id:'est18',name:'Churrería Campanar',emoji:'🥨',type:'Dulces',cost:95000,lat:39.4770,lng:-0.3940},
+  {id:'est19',name:'Zara Calle Colón',emoji:'👗',type:'Ropa',cost:280000,lat:39.4682,lng:-0.3729},
+  {id:'est20',name:'H&M Calle Colón',emoji:'🧥',type:'Ropa',cost:210000,lat:39.4686,lng:-0.3719},
+  {id:'est21',name:'Pull&Bear Calle Colón',emoji:'👕',type:'Ropa',cost:175000,lat:39.4678,lng:-0.3732},
+  {id:'est22',name:'Nike Store Xàtiva',emoji:'👟',type:'Ropa deportiva',cost:225000,lat:39.4664,lng:-0.3777},
+  {id:'est23',name:'Lefties Calle Colón',emoji:'👚',type:'Ropa',cost:165000,lat:39.4680,lng:-0.3725},
+  {id:'est24',name:'Tienda Gourmet Ruzafa',emoji:'🍾',type:'Gourmet',cost:420000,lat:39.4618,lng:-0.3740},
+  {id:'est25',name:'Mascotas Mestalla',emoji:'🐶',type:'Mascotas',cost:190000,lat:39.4740,lng:-0.3580},
+  {id:'est26',name:'Tienda Bebé Aragón',emoji:'🍼',type:'Bebés',cost:230000,lat:39.4720,lng:-0.3610},
+  {id:'est27',name:'Limpiezas Turia',emoji:'🧴',type:'Limpieza',cost:150000,lat:39.4705,lng:-0.3860},
+  {id:'est28',name:'Kiosco Malvarrosa',emoji:'📰',type:'Kiosco',cost:85000,lat:39.4720,lng:-0.3280},
+  {id:'est29',name:'Estación de servicio Repsol',emoji:'⛽',type:'Gasolinera',cost:260000,lat:39.4791,lng:-0.3615},
+  {id:'est30',name:'MediaMarkt Colón',emoji:'📱',type:'Electrónica',cost:360000,lat:39.4693,lng:-0.3735},
+  {id:'est31',name:'El Corte Inglés Pintor Sorolla',emoji:'🏬',type:'Grandes almacenes',cost:520000,lat:39.4695,lng:-0.3741},
+  {id:'est32',name:'Bowling Valencia',emoji:'🎳',type:'Ocio y entretenimiento',cost:275000,lat:39.4790,lng:-0.3982},
+  {id:'est33',name:'Cosmic Bowling',emoji:'🕹️',type:'Ocio y entretenimiento',cost:235000,lat:39.4568,lng:-0.3812},
+  {id:'est34',name:'Jardines Viveros',emoji:'🌳',type:'Parque',cost:150000,lat:39.4805,lng:-0.3677},
+  {id:'est35',name:'Parque Gulliver',emoji:'🎡',type:'Parque y ocio',cost:165000,lat:39.4625,lng:-0.3600},
+  {id:'est36',name:'Decathlon City Valencia',emoji:'🏸',type:'Deporte',cost:310000,lat:39.4776,lng:-0.3958},
+  {id:'est37',name:'Estación de Autobuses',emoji:'🚌',type:'Transporte',cost:200000,lat:39.4658,lng:-0.3795},
+  {id:'est38',name:'Estación del Norte',emoji:'🚉',type:'Transporte',cost:300000,lat:39.4695,lng:-0.3765}
+];
+
+const FAMILY_ORDER = ['Alimentación y mercados','Restauración y ocio','Comercio especializado','Servicios y movilidad'];
+
+function familyOf(e) {
+  const t = e.type;
+  if (['Mercado','Frutería','Panadería','Carnicería','Pescadería','Lácteos','Despensa','Congelados'].includes(t)) return 'Alimentación y mercados';
+  if (['Ocio y chismes','Restaurante','Café','Bebidas','Dulces','Tapería','Churrería'].includes(t)) return 'Restauración y ocio';
+  if (['Ropa','Ropa deportiva','Gourmet','Mascotas','Bebés','Limpieza','Kiosco','Electrónica','Grandes almacenes','Deporte'].includes(t)) return 'Comercio especializado';
+  return 'Servicios y movilidad';
+}
+
+// ============ ESTADO DE CONFIGURACIÓN ============
+let backgroundChoice = 'lottery';
+
+function renderOrigins() {
+  const box = $('originList');
+  if (!box) return;
+  const selected = backgroundChoice;
+  box.innerHTML = Object.values(ORIGINS).map(o => `
+    <button type="button" class="origin-card${selected === o.id ? ' sel' : ''}" data-origin="${o.id}">
+      <h3>${o.icon} ${o.name}</h3>
+      <p><b>${o.title}</b></p>
+      <p class="origin-money">💼 ${fmt$(o.wallet)} · 🏪 ${fmt$(o.cash)}</p>
+      <p class="origin-challenge">Reto: ${o.id === 'lottery' ? 'Impuestos, inspecciones y competencia agresiva.' : o.id === 'worker' ? 'Gastos diarios, préstamo y turnos obligatorios.' : o.id === 'vulnerable' ? 'Supervivencia diaria y energía limitada.' : o.id === 'digital' ? 'Riesgo de burbuja tecnológica y fiscalidad compleja.' : o.id === 'heir' ? 'Deudas y mantener el legado familiar.' : 'Barreras de idioma y capital ajustado.'}</p>
+    </button>
+  `).join('');
+  const o = ORIGINS[selected];
+  $('introText').textContent = `Tu clase define el capital de partida, el nivel de energía, los gastos y las obligaciones. Después podrás comprar artículos, conseguir trabajos, adquirir establecimientos, administrar tu economía e invertir en tu crecimiento. ${o.desc}`;
+  $('originDetail').innerHTML = `<b>${o.icon} ${o.title}</b><span class="origin-badge">Seleccionado</span><br>${o.desc}`;
+
+  // ==== PRESUPUESTO Y CAJA DINÁMICOS SEGÚN LA CLASE ====
+  const budgetEl = $('startBudget');
+  const cashEl = $('startCash');
+  if (budgetEl) budgetEl.textContent = fmt$(o.wallet);
+  if (cashEl) cashEl.textContent = fmt$(o.cash);
+}
+
+// Eventos de selección
+$('originList').addEventListener('click', e => {
+  const b = e.target.closest('[data-origin]');
+  if (!b) return;
+  backgroundChoice = b.dataset.origin;
+  renderOrigins();
+});
+
+// ============ AMIGOS ============
+const FRIENDS_KEY = 'stFriendsV1';
+function loadFriends() { try { return JSON.parse(localStorage.getItem(FRIENDS_KEY) || '[]'); } catch(e) { return []; } }
+function saveFriends(f) { localStorage.setItem(FRIENDS_KEY, JSON.stringify(f)); }
+
+function renderFriends(containerId) {
+  const box = document.getElementById(containerId);
+  if (!box) return;
+  const friends = loadFriends();
+  if (!friends.length) {
+    box.className = 'emptybox';
+    box.innerHTML = 'Aún no has añadido amigos.';
+    return;
+  }
+  box.className = '';
+  box.innerHTML = friends.map((f, i) => `
+    <div class="orow">
+      <span>👤 <b>${f.name}</b> <span style="color:#8a7f68;font-size:.82rem">${f.phone}</span></span>
+      <span class="rowflex" style="gap:6px">
+        <button class="btn grn" data-wa="${i}" style="padding:4px 8px">📲 WhatsApp</button>
+        <button class="btn red" data-rmf="${i}" style="padding:4px 8px">🗑️</button>
+      </span>
+    </div>
+  `).join('');
+  box.querySelectorAll('[data-wa]').forEach(b => b.onclick = () => waInvite(friends[+b.dataset.wa]));
+  box.querySelectorAll('[data-rmf]').forEach(b => b.onclick = () => {
+    const fr = loadFriends();
+    fr.splice(+b.dataset.rmf, 1);
+    saveFriends(fr);
+    renderFriends('friendsList');
+    renderFriends('friendsListWait');
+  });
+}
+
+function waInvite(friend) {
+  const room = 'barrio-1';
+  const msg = `¡Hola ${friend.name}! 🏘️ Te invito a jugar a SuperGanga Tycoon online. Entra en modo 🌐 "Modo multijugador masivo" y únete a la sala ${room}`;
+  const phone = (friend.phone || '').replace(/[^\d+]/g, '');
+  window.open('https://wa.me/' + encodeURIComponent(phone) + '?text=' + encodeURIComponent(msg), '_blank');
+}
+
+$('btnAddFriend').onclick = () => {
+  const name = $('friendName').value.trim();
+  const phone = $('friendPhone').value.trim();
+  if (!name || !phone) { toast('✏️ Escribe nombre y móvil.'); return; }
+  const fr = loadFriends();
+  fr.push({ name, phone });
+  saveFriends(fr);
+  $('friendName').value = '';
+  $('friendPhone').value = '';
+  renderFriends('friendsList');
+  renderFriends('friendsListWait');
+  toast('✅ Amigo guardado.');
+};
+
+$('btnFriendsIntro').onclick = () => {
+  renderFriends('friendsList');
+  document.getElementById('modal-friends').classList.add('open');
+};
+
+// ============ FIREBASE CONFIG ============
+const FIREBASE_CONFIG = { apiKey: "AIzaSyAonZFfeUCTELdFUhQrPADOPafFA0_Tzeg", authDomain: "juegobarrio-fbe55.firebaseapp.com", projectId: "juegobarrio-fbe55" };
+const FB_OK = typeof firebase !== 'undefined';
+$('fbNote').textContent = FB_OK ? '✅ Firebase detectado: podrás jugar online y tus partidas se guardarán en la nube.' : '⚠️ Firebase sin configurar. El modo online se jugará con vecinos CPU.';
+
+// ============ PERSISTENCIA ONLINE EN FIREBASE ============
+const ONLINE_COLLECTION = 'stSavesOnline';
+let firebaseReady = false;
+let firebaseDb = null;
+let firebaseUid = null;
+let firebaseInitPromise = null;
+
+function ensureFirebaseReady() {
+  if (firebaseReady && firebaseDb && firebaseUid) return Promise.resolve({ db: firebaseDb, uid: firebaseUid });
+  if (firebaseInitPromise) return firebaseInitPromise;
+  if (!FB_OK) return Promise.reject(new Error('Firebase no disponible.'));
+  firebaseInitPromise = (async () => {
+    try { if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG); } catch(e) {}
+    try { await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL); } catch(e) {}
+    if (!firebase.auth().currentUser) {
+      await firebase.auth().signInAnonymously();
+    }
+    firebaseUid = firebase.auth().currentUser.uid;
+    firebaseDb = firebase.firestore();
+    firebaseReady = true;
+    return { db: firebaseDb, uid: firebaseUid };
+  })().catch(err => {
+    firebaseInitPromise = null;
+    throw err;
+  });
+  return firebaseInitPromise;
+}
+
+// Convierte el avatar base64 en un string recortado para no exceder Firestore.
+function safeAvatarForFirestore(dataUrl) {
+  if (!dataUrl) return '';
+  // Firestore limita documentos a 1 MB. Con resize a 220px/JPEG 0.85 el avatar ronda los 15-25 KB.
+  if (dataUrl.length > 220000) return ''; // descarta si es exageradamente grande
+  return dataUrl;
+}
+
+// Guarda/actualiza una partida online en Firestore.
+async function uploadSaveToFirebase(saveId, payload) {
+  const { db, uid } = await ensureFirebaseReady();
+  const doc = {
+    saveId,
+    ownerUID: uid,
+    pname: payload.pname || 'ALEX',
+    origin: payload.origin || 'lottery',
+    community: payload.community || 'comunidad-valenciana',
+    mode: 'online',
+    room: payload.room || 'barrio-1',
+    day: Number(payload.day || 1),
+    wallet: Number(payload.wallet || 0),
+    cash: Number(payload.cash || 0),
+    avatar: safeAvatarForFirestore(payload.avatar || ''),
+    state: payload.state || null,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  await db.collection(ONLINE_COLLECTION).doc(saveId).set(doc, { merge: true });
+  return doc;
+}
+
+// Consulta partidas por UID del usuario (persistencia automática).
+async function fetchFirebaseSavesByUid(uid) {
+  const { db } = await ensureFirebaseReady();
+  const snap = await db.collection(ONLINE_COLLECTION).where('ownerUID', '==', uid).get();
+  const arr = [];
+  snap.forEach(d => arr.push({ id: d.id, source: 'firebase', ...d.data() }));
+  return arr;
+}
+
+// Consulta partidas por alias (recuperación manual si se borra el historial).
+async function fetchFirebaseSavesByAlias(pname) {
+  const { db } = await ensureFirebaseReady();
+  const alias = String(pname || '').trim().toUpperCase();
+  if (!alias) return [];
+  const snap = await db.collection(ONLINE_COLLECTION).where('pname', '==', alias).get();
+  const arr = [];
+  snap.forEach(d => arr.push({ id: d.id, source: 'firebase', ...d.data() }));
+  return arr;
+}
+
+// ============ PARTIDAS GUARDADAS (LOCAL + FIREBASE) ============
+const SAVES_KEY = 'stSavesV1';
+const GAME_STATE_KEY = 'superTycoonV2';
+function loadSavedGames() {
+  try { return JSON.parse(localStorage.getItem(SAVES_KEY) || '{}') || {}; } catch (e) { return {}; }
+}
+function saveLocalRegistry(reg) {
+  try { localStorage.setItem(SAVES_KEY, JSON.stringify(reg)); } catch (e) {}
+}
+
+// Variable para conservar el último alias buscado entre renders del modal
+let savedGamesSearchAlias = '';
+
+// Pinta el modal con la información disponible (llamada síncrona para mostrar rápido local).
+function paintSavedGames(localSaves, firebaseSaves, aliasSearch, fbError, loadingFirebase) {
+  const box = $('savedGamesCard');
+
+  // Unificamos por id (Firebase puede traer guardados que ya existen localmente)
+  const merged = new Map();
+  Object.entries(localSaves).forEach(([id, entry]) => {
+    merged.set(id, { id, source: 'local', ...entry });
+  });
+  Object.values(firebaseSaves || {}).forEach(entry => {
+    const prev = merged.get(entry.id);
+    // Si ya existe localmente, marcamos como "ambos" (prioriza firebase por ser la fuente persistente)
+    if (prev) {
+      merged.set(entry.id, { ...prev, ...entry, source: 'firebase' });
+    } else {
+      merged.set(entry.id, entry);
+    }
+  });
+
+  const entries = Array.from(merged.values()).sort((a, b) => {
+    const ta = (a.updatedAt && a.updatedAt.seconds) ? a.updatedAt.seconds * 1000 : (a.updatedAt || 0);
+    const tb = (b.updatedAt && b.updatedAt.seconds) ? b.updatedAt.seconds * 1000 : (b.updatedAt || 0);
+    return tb - ta;
+  });
+
+  const rows = entries.map(entry => {
+    const origin = ORIGINS[entry.origin || entry.background];
+    const mode = entry.mode === 'online' ? '🌐 Multijugador' : '🤖 CPU';
+    const tsRaw = entry.updatedAt;
+    const ts = (tsRaw && tsRaw.seconds) ? tsRaw.seconds * 1000 : (typeof tsRaw === 'number' ? tsRaw : 0);
+    const savedAt = ts ? new Date(ts).toLocaleString('es-ES') : 'sin fecha';
+    const avatarMini = entry.avatar
+      ? `<img src="${entry.avatar}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:8px;border:2px solid var(--shadow)">`
+      : '';
+    const sourceBadge = entry.source === 'firebase'
+      ? `<span class="save-source firebase">☁️ Firebase</span>`
+      : `<span class="save-source local">💾 Local</span>`;
+    return `<div class="saved-row">
+      <span style="flex:1;min-width:180px">
+        ${avatarMini}<b>${entry.pname || 'Sin nombre'}</b>${sourceBadge}<br>
+        <span style="font-size:.8rem;color:#6b6250">${origin?.icon || '🎭'} ${origin?.name || 'Clase desconocida'} · ${mode}</span><br>
+        <span style="font-size:.74rem;color:#8a7f68">📅 Día ${entry.day || 1} · 💼 ${fmt$(entry.wallet || 0)} · ${savedAt}</span>
+      </span>
+      <span class="saved-actions">
+        <button class="btn grn" data-load-save="${entry.id}" data-source="${entry.source}">▶️ Entrar</button>
+        <button class="btn red" data-delete-save="${entry.id}" data-source="${entry.source}" title="Eliminar partida">🗑️</button>
+      </span>
+    </div>`;
+  }).join('') || '<div class="emptybox">Todavía no tienes partidas guardadas.</div>';
+
+  box.innerHTML = `
+    <h2>📂 Partidas guardadas</h2>
+    <p style="font-size:.85rem;color:#6b6250">Elige una partida para continuar. Las guardadas en <b>☁️ Firebase</b> permanecen aunque borres el historial del navegador.</p>
+    <div class="save-search">
+      <input id="saveAliasSearch" type="text" maxlength="16" placeholder="🔎 Buscar por alias en la nube…" value="${aliasSearch ? aliasSearch.replace(/"/g,'&quot;') : ''}">
+      <button class="btn" id="btnSearchSaves" type="button">Buscar</button>
+      <button class="btn ghost" id="btnReloadSaves" type="button">🔄 Recargar</button>
+    </div>
+    <div class="save-info">
+      💡 Si has borrado el historial del navegador, escribe tu <b>alias exacto</b> y pulsa <b>Buscar</b>: tus partidas online se cargarán desde Firebase.
+    </div>
+    ${loadingFirebase ? '<div class="save-loading">⏳ Buscando partidas en la nube…</div>' : ''}
+    ${fbError ? `<div class="save-info" style="color:#a92417;background:#ffe2e2;border-color:#f3b3b3">⚠️ Firebase: ${fbError}</div>` : ''}
+    <div class="sect">${rows}</div>
+    <div style="text-align:right;margin-top:8px"><button class="btn ghost" data-close-saves type="button">Cerrar ✖</button></div>`;
+
+  // Botones de búsqueda / recarga (se vuelven a ligar tras repintar)
+  const inp = $('saveAliasSearch');
+  if (inp) {
+    inp.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); savedGamesSearchAlias = inp.value; renderSavedGames(); } });
+  }
+  const btnSearch = $('btnSearchSaves');
+  if (btnSearch) btnSearch.addEventListener('click', () => {
+    savedGamesSearchAlias = (inp?.value || '').trim();
+    renderSavedGames();
+  });
+  const btnReload = $('btnReloadSaves');
+  if (btnReload) btnReload.addEventListener('click', () => renderSavedGames());
+}
+
+// Carga el modal completo: primero local, luego Firebase (UID + alias buscado).
+async function renderSavedGames() {
+  const box = $('savedGamesCard');
+  box.innerHTML = '<h2>📂 Partidas guardadas</h2><div class="save-loading">⏳ Cargando…</div>';
+
+  const localSaves = loadSavedGames();
+  const aliasSearch = savedGamesSearchAlias || (($('introName')?.value || '').trim());
+  let firebaseSaves = {};
+  let fbError = '';
+
+  // Pintamos ya las locales (feedback inmediato)
+  paintSavedGames(localSaves, firebaseSaves, aliasSearch, '', true);
+
+  try {
+    if (FB_OK) {
+      const { uid } = await ensureFirebaseReady();
+      const byUid = await fetchFirebaseSavesByUid(uid);
+      let byAlias = [];
+      if (aliasSearch) {
+        byAlias = await fetchFirebaseSavesByAlias(aliasSearch);
+      }
+      const all = [...byUid, ...byAlias];
+      all.forEach(s => { firebaseSaves[s.id] = s; });
+    }
+  } catch (e) {
+    fbError = e?.message || 'No se pudo conectar con Firebase.';
+  }
+
+  paintSavedGames(localSaves, firebaseSaves, aliasSearch, fbError, false);
+}
+
+function openSavedGames() {
+  savedGamesSearchAlias = (($('introName')?.value || '').trim());
+  renderSavedGames();
+  $('modal-saved-games').classList.add('open');
+}
+
+$('btnContinueGame').addEventListener('click', openSavedGames);
+
+// Manejador de clicks dentro del modal (delegación de eventos)
+$('savedGamesCard').addEventListener('click', async event => {
+  const closeButton = event.target.closest('[data-close-saves]');
+  if (closeButton) {
+    $('modal-saved-games').classList.remove('open');
+    return;
+  }
+
+  const deleteButton = event.target.closest('[data-delete-save]');
+  if (deleteButton) {
+    const saveId = deleteButton.dataset.deleteSave;
+    const source = deleteButton.dataset.source;
+    if (!confirm('¿Eliminar esta partida guardada? No se puede deshacer.')) return;
+    // Borrar local siempre (si existe)
+    const saves = loadSavedGames();
+    if (saves[saveId]) { delete saves[saveId]; saveLocalRegistry(saves); }
+    // Si es de Firebase, borrar también en la nube
+    if (source === 'firebase' && FB_OK) {
+      try {
+        const { db } = await ensureFirebaseReady();
+        await db.collection(ONLINE_COLLECTION).doc(saveId).delete();
+        toast('🗑️ Partida eliminada también de la nube.');
+      } catch (e) {
+        toast('⚠️ No se pudo borrar en la nube: ' + (e.message || e));
+      }
+    }
+    renderSavedGames();
+    return;
+  }
+
+  const loadButton = event.target.closest('[data-load-save]');
+  if (!loadButton) return;
+  const saveId = loadButton.dataset.loadSave;
+  const source = loadButton.dataset.source;
+
+  let entry = loadSavedGames()[saveId];
+  // Si la partida es de Firebase y no está en local (o es más reciente en nube), la traemos
+  if (source === 'firebase' && FB_OK) {
+    try {
+      const { db } = await ensureFirebaseReady();
+      const snap = await db.collection(ONLINE_COLLECTION).doc(saveId).get();
+      if (snap.exists) {
+        const data = { id: snap.id, ...snap.data() };
+        const firebaseEntry = {
+          pname: data.pname,
+          background: data.origin,
+          community: data.community,
+          mode: data.mode,
+          room: data.room,
+          day: data.day,
+          wallet: data.wallet,
+          cash: data.cash,
+          avatar: data.avatar || '',
+          updatedAt: data.updatedAt && data.updatedAt.seconds ? data.updatedAt.seconds * 1000 : Date.now(),
+          state: data.state || null,
+          firebase: true
+        };
+        // Guardar en local (registro) para la próxima vez
+        const reg = loadSavedGames();
+        reg[saveId] = firebaseEntry;
+        saveLocalRegistry(reg);
+        entry = firebaseEntry;
+      }
+    } catch (e) {
+      toast('⚠️ No se pudo descargar la partida desde la nube.');
+    }
+  }
+
+  if (!entry) { toast('⚠️ Esta partida no tiene un estado válido.'); return; }
+
+  // Si la entrada es solo config (sin state) damos por hecho que mi_ciudad.html generará el estado a partir de la config.
+  if (entry.state) {
+    localStorage.setItem(GAME_STATE_KEY, JSON.stringify(entry.state));
+  } else {
+    localStorage.removeItem(GAME_STATE_KEY);
+  }
+
+  localStorage.setItem('gameConfig', JSON.stringify({
+    pname: entry.pname,
+    origin: entry.background || entry.origin,
+    community: entry.community || 'comunidad-valenciana',
+    mode: entry.mode || 'online',
+    room: entry.room || 'barrio-1',
+    properties: (entry.state && entry.state.properties) || [],
+    saveId: saveId,
+    avatar: entry.avatar || ''
+  }));
+  if (entry.avatar) localStorage.setItem(AVATAR_KEY, entry.avatar);
+
+  window.location.href = 'mi_ciudad.html';
+});
+
+// ============ GUARDAR CONFIGURACIÓN Y REDIRIGIR ============
+async function redirectToGame(mode) {
+  const pname = ($('introName').value || 'Alex').toUpperCase();
+  const origin = backgroundChoice;
+  const community = $('introCommunity').value;
+  const properties = [];
+  const room = 'barrio-1';
+
+  // === NUEVO: Si es modo online, subimos el arranque a Firebase ===
+  let saveId = null;
+  if (mode === 'online' && FB_OK) {
+    try {
+      saveId = 'sv_online_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+      const o = ORIGINS[origin] || {};
+      await uploadSaveToFirebase(saveId, {
+        pname, origin, community, room,
+        day: 1,
+        wallet: o.wallet || 0,
+        cash: o.cash || 0,
+        avatar: avatarDataUrl || '',
+        state: null // mi_ciudad.html irá actualizando este documento
+      });
+      // Reflejamos también en el registro local
+      const reg = loadSavedGames();
+      reg[saveId] = {
+        pname, background: origin, community, mode:'online', room,
+        day: 1, wallet: o.wallet || 0, cash: o.cash || 0,
+        avatar: avatarDataUrl || '', updatedAt: Date.now(),
+        state: null, firebase: true
+      };
+      saveLocalRegistry(reg);
+      toast('☁️ Partida online guardada en la nube.');
+    } catch (e) {
+      console.warn('No se pudo guardar en Firebase:', e);
+      toast('⚠️ No se pudo guardar en la nube. Se guardará solo en local.');
+    }
+  }
+
+  const config = {
+    pname, origin, community, properties, mode, room,
+    avatar: avatarDataUrl || '',
+    saveId
+  };
+  localStorage.setItem('gameConfig', JSON.stringify(config));
+
+  const geminiKey = obtenerApiKey();
+  if (geminiKey && pareceApiKeyValida(geminiKey)) {
+    localStorage.setItem(LS_API_KEY, cifrarTexto(geminiKey));
+  }
+  window.location.href = 'mi_ciudad.html';
+}
+
+// ============ BOTONES DE MODO ============
+$('btnOffline').addEventListener('click', () => {
+  redirectToGame('cpu');
+});
+
+$('btnOnline').addEventListener('click', () => {
+  if (!FB_OK) {
+    toast('⚠️ Firebase no disponible. Jugarás en modo CPU.');
+    redirectToGame('cpu');
+    return;
+  }
+  ensureFirebaseReady().then(async ({ uid, db }) => {
+    const room = 'barrio-1';
+    const pname = ($('introName').value || 'Alex').toUpperCase();
+
+    const playerData = {
+      name: pname,
+      emoji: '⭐',
+      color: '#e8b23c',
+      level: 1,
+      money: 0,
+      wallet: 0,
+      lastSeen: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if (avatarDataUrl) playerData.avatar = safeAvatarForFirestore(avatarDataUrl);
+
+    db.collection('rooms').doc(room).collection('players').doc(uid).set(playerData, { merge: true }).catch(() => {});
+
+    const lobbyData = {
+      name: pname,
+      room: room,
+      ts: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if (avatarDataUrl) lobbyData.avatar = safeAvatarForFirestore(avatarDataUrl);
+    db.collection('lobby').doc(uid).set(lobbyData, { merge: true }).catch(() => {});
+
+    toast('🌐 Conectado a la sala ' + room);
+    // Subimos la partida a Firebase antes de redirigir
+    await redirectToGame('online');
+  }).catch(e => {
+    toast('❌ No se pudo conectar: ' + (e.message || e) + '. Modo CPU.');
+    redirectToGame('cpu');
+  });
+});
+
+// ============ TOAST ============
+function toast(m) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = m;
+  document.getElementById('toasts').appendChild(t);
+  setTimeout(() => t.remove(), 3600);
+}
+
+// ============ INICIALIZAR ============
+const INTRO_FLAVORS = [
+  '🌅 Valencia te espera: recorre el mapa, descubre sus barrios y convierte cada local en una oportunidad para hacer crecer tu negocio.',
+  '🏛️ Desde la Plaza del Ayuntamiento hasta el Mercado Central, cada edificio puede esconder una operación, un contrato o una nueva estrategia.',
+  '🌊 Acércate a la Malvarrosa, visita Casa Carmela y observa cómo la vida de Valencia influye en tus clientes, tus ventas y tu reputación.',
+  '🚲 Explora Ruzafa, El Carmen, Benimaclet y Campanar: conoce a tus vecinos y decide en qué parte de la ciudad quieres construir tu imperio.',
+  '🍊 Valencia no es solo un mapa: sus comercios, bares, fábricas y casas forman una red de relaciones que puedes aprovechar para progresar.',
+  '🤝 Habla con los vecinos, negocia en el Mercado broker y descubre cómo tus decisiones cambian la confianza que el barrio tiene en ti.',
+  '🏪 Cada establecimiento cuenta una historia. Visítalo, pulsa sobre él y elige si quieres comprar, vender, trabajar, invertir o colaborar.',
+  '☀️ Organiza tu ruta por la ciudad, administra tus euros y transforma una buena oportunidad en el supermercado más querido de Valencia.'
+];
+$('valenciaMessage').textContent = rnd(INTRO_FLAVORS);
+
+// Cargar clave Gemini guardada
+const savedGeminiKey = obtenerApiKey();
+if (savedGeminiKey && pareceApiKeyValida(savedGeminiKey)) {
+  const statusEl = document.getElementById('geminiKeyStatus');
+  if (statusEl) {
+    statusEl.textContent = '🔑 Clave disponible';
+    statusEl.style.color = '#3ecf6f';
+  }
+}
+
+// Probar Gemini al hacer clic en el botón
+document.getElementById('btnTestGeminiKey').addEventListener('click', probarConexionGemini);
+
+// Cargar avatar guardado y renderizar orígenes (que actualiza también presupuesto y caja)
+avatarDataUrl = loadAvatarFromStorage();
+updateAvatarUI();
+renderOrigins();
+
+// Pre-inicializamos Firebase en segundo plano (silencioso) para acelerar el modal.
+if (FB_OK) {
+  ensureFirebaseReady().catch(() => {});
+}
+</script>
+</body>
+</html>
